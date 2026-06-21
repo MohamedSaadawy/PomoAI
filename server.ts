@@ -288,6 +288,12 @@ Find high leverage adjustments. Sort the list, giving the ID array sequence in r
 // Vite and Production Serving Middleware Setup
 // -------------------------------------------------------------
 async function startServer() {
+  if (process.env.VERCEL) {
+    // On Vercel, the platform serves static frontend assets directly and routes /api endpoints.
+    // We skip mounting Vite or local static file paths to avoid runtime asset reference crashes.
+    return;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     // Development Mode
     const vite = await createViteServer({
@@ -304,11 +310,9 @@ async function startServer() {
     });
   }
 
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`AI Pomodoro server boot complete! Listening on http://localhost:${PORT}`);
-    });
-  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`AI Pomodoro server boot complete! Listening on http://localhost:${PORT}`);
+  });
 }
 
 startServer();

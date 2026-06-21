@@ -1,0 +1,6 @@
+{
+  "name": "AI Pomodoro Productivity OS",
+  "description": "An intelligent productivity operating system featuring standard timers, custom task management, visual projects, focus forest animations, dynamic focus analytics, and a context-aware Gemini AI Coach.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

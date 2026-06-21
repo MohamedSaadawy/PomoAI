@@ -537,7 +537,7 @@ export default function App() {
   const textMutedClass = appTheme === 'light' ? 'text-slate-500' : 'text-slate-400';
 
   return (
-    <div className={`min-h-screen flex overflow-hidden transition-colors duration-200 ${themeBgClass}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`h-screen w-full flex overflow-hidden transition-colors duration-200 ${themeBgClass}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       
       {/* Mobile Sidebar backdrop overlay */}
       {sidebarOpen && (
@@ -649,7 +649,7 @@ export default function App() {
       </aside>
 
       {/* Main Operational View Stage */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* Top Header Metrics Row */}
         <header className={`px-4 sm:px-8 py-4 flex items-center justify-between shrink-0 relative z-35 backdrop-blur-md ${headerBgClass}`}>

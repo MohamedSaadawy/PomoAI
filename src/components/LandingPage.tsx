@@ -106,7 +106,7 @@ export default function LandingPage({
   const headerBorders = appTheme === 'light' ? 'border-slate-200' : 'border-white/5';
 
   return (
-    <div id="landing-container" className={`min-h-screen ${themeBgClass} overflow-x-hidden selection:bg-cyan-500 selection:text-white transition-colors duration-200`} dir={isRtl ? 'rtl' : 'ltr'}>
+    <div id="landing-container" className={`min-h-screen relative overflow-x-hidden ${themeBgClass} selection:bg-cyan-500 selection:text-white transition-colors duration-200`} dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Background Ambient Glows */}
       {appTheme === 'dark' && (
         <>
@@ -232,7 +232,7 @@ export default function LandingPage({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.04 }}
-                className={`p-6 rounded-2xl border transition-all ${
+                className={`p-6 rounded-2xl border transition-all relative ${
                   appTheme === 'light' 
                     ? 'bg-white border-slate-200 text-slate-800 hover:shadow-md' 
                     : 'bg-[#0b0f19]/70 border-white/5 text-slate-100 hover:bg-[#0c1222] hover:border-white/10'

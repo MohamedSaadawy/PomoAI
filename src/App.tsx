@@ -724,7 +724,7 @@ export default function App() {
         </header>
 
         {/* Dynamic Inner Viewport */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-8 py-8 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   CalendarDays, 
@@ -6,19 +6,20 @@ import {
   ChevronRight, 
   Clock, 
   Plus, 
-  Check, 
-  MapPin, 
   BookOpen, 
   Calendar,
-  Sparkles
+  Zap
 } from 'lucide-react';
 import { Task, Project, CalendarEvent } from '../types';
+import { translations } from '../utils/translations';
 
 interface CalendarTabProps {
   tasks: Task[];
   projects: Project[];
   calendarEvents: CalendarEvent[];
   onAddCalendarEvent: (evt: Omit<CalendarEvent, 'id'>) => void;
+  lang: 'en' | 'ar';
+  appTheme: 'dark' | 'light';
 }
 
 export default function CalendarTab({
@@ -26,7 +27,12 @@ export default function CalendarTab({
   projects,
   calendarEvents,
   onAddCalendarEvent,
+  lang,
+  appTheme
 }: CalendarTabProps) {
+  const t = translations[lang];
+  const isRtl = lang === 'ar';
+
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -77,20 +83,27 @@ export default function CalendarTab({
     setCurrentDate(prev);
   };
 
-  // Helper arrays for calendar generation
-  const monthNames = [
+  // Month Names Translation Dictionary
+  const monthNamesEn = [
     "January", "February", "March", "April", "May", "June", 
     "July", "August", "September", "October", "November", "December"
   ];
+  const monthNamesAr = [
+    "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+    "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+  ];
+  const monthNames = lang === 'en' ? monthNamesEn : monthNamesAr;
+
+  const weekdaysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekdaysAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const weekdays = lang === 'en' ? weekdaysEn : weekdaysAr;
   
-  // Year Month specifications
   const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
   const getFirstDayOfMonthIdx = (y: number, m: number) => new Date(y, m, 1).getDay();
 
   const daysCount = getDaysInMonth(currentYear, currentMonthIdx);
   const startOffset = getFirstDayOfMonthIdx(currentYear, currentMonthIdx);
 
-  // Month days sequence index
   const daysArray: (number | null)[] = [];
   for (let i = 0; i < startOffset; i++) {
     daysArray.push(null);
@@ -99,61 +112,80 @@ export default function CalendarTab({
     daysArray.push(i);
   }
 
-  // Format date digits e.g. "2026-06-12"
   const formatDateString = (year: number, monthIdx: number, dayNum: number) => {
     const mStr = (monthIdx + 1).toString().padStart(2, '0');
     const dStr = dayNum.toString().padStart(2, '0');
     return `${year}-${mStr}-${dStr}`;
   };
 
+  // Styling presets with respect to theme
+  const cardBgClass = appTheme === 'light' 
+    ? 'bg-white border-slate-200 text-slate-800' 
+    : 'bg-[#0b0f19]/60 border-white/5 text-slate-100';
+
+  const widgetBgClass = appTheme === 'light' ? 'bg-slate-100/60 border-slate-200' : 'bg-slate-950/30 border-white/5';
+  const textTitleClass = appTheme === 'light' ? 'text-slate-900' : 'text-white';
+  const textMutedClass = appTheme === 'light' ? 'text-slate-500' : 'text-slate-400';
+
   return (
-    <div id="calendar-view-panel" className="space-y-6 select-none">
+    <div id="calendar-view-panel" className="space-y-6 select-none" dir={isRtl ? 'rtl' : 'ltr'}>
       
       {/* Top Header Selector Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 p-6 rounded-3xl border border-white/5">
+      <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${cardBgClass}`}>
         <div className="space-y-1">
-          <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-cyan-400" /> Dynamic scheduler
+          <h2 className={`text-xl sm:text-2xl font-extrabold flex items-center gap-2 ${textTitleClass}`}>
+            <CalendarDays className="w-6 h-6 text-cyan-500" />
+            <span>{lang === 'en' ? 'Study Scheduler & Calendar' : 'مخطط وجدول المذاكرة'}</span>
           </h2>
-          <p className="text-xs text-slate-400 font-light">Schedule Pomodoro tasks, view study milestones, or sync structured milestones.</p>
+          <p className={`text-xs ${textMutedClass} font-light`}>
+            {lang === 'en' ? 'Visual representation of scheduled focus slots, deadlines, and milestones.' : 'منظور بصري زمني لجلسات المذاكرة المجدولة ومهام التسليم المقررة.'}
+          </p>
         </div>
 
         {/* View Mode Pills */}
-        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl">
+        <div className={`p-1 rounded-xl flex items-center gap-1 ${appTheme === 'light' ? 'bg-slate-100' : 'bg-slate-950'}`}>
           {['month', 'week', 'day'].map((v) => (
             <button
               key={v}
               onClick={() => setViewMode(v as any)}
-              className={`px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider rounded-lg transition-all ${viewMode === v ? 'bg-slate-800 text-cyan-400 font-extrabold' : 'text-slate-400 hover:text-white'}`}
+              className={`px-3 py-1.5 text-[9px] uppercase font-bold tracking-wider rounded-lg transition-all cursor-pointer ${
+                viewMode === v ? 'bg-cyan-500 text-white font-extrabold' : 'text-slate-500 hover:text-cyan-500'
+              }`}
             >
-              {v}
+              {v === 'month' ? (lang === 'en' ? 'Month' : 'شهر') : v === 'week' ? (lang === 'en' ? 'Week' : 'أسبوع') : (lang === 'en' ? 'Day' : 'يوم')}
             </button>
           ))}
         </div>
       </div>
 
       {/* Navigation and Actions */}
-      <div className="flex justify-between items-center bg-slate-950/20 p-4 rounded-2xl border border-slate-900">
+      <div className={`p-4 rounded-xl border flex justify-between items-center ${
+        appTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/20 border-slate-900'
+      }`}>
         <div className="flex items-center gap-4">
           <div className="flex gap-1.5">
             <button 
               onClick={handlePrevRange}
-              className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                appTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-slate-800 hover:bg-slate-700 text-slate-350'
+              }`}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className={`w-3.5 h-3.5 ${isRtl ? 'rotate-180': ''}`} />
             </button>
             <button 
               onClick={handleNextRange}
-              className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+              className={`p-2 rounded-lg cursor-pointer transition-colors ${
+                appTheme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-slate-800 hover:bg-slate-700 text-slate-350'
+              }`}
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className={`w-3.5 h-3.5 ${isRtl ? 'rotate-180': ''}`} />
             </button>
           </div>
 
-          <h3 className="text-sm font-bold text-white select-text font-mono">
+          <h3 className={`text-xs sm:text-sm font-bold font-mono ${textTitleClass}`}>
             {viewMode === 'month' && `${monthNames[currentMonthIdx]} ${currentYear}`}
-            {viewMode === 'week' && `Week of ${currentDate.toLocaleDateString()}`}
-            {viewMode === 'day' && currentDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {viewMode === 'week' && `${lang === 'en' ? 'Week of' : 'أسبوع'} ${currentDate.toLocaleDateString(lang)}`}
+            {viewMode === 'day' && currentDate.toLocaleDateString(lang, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </h3>
         </div>
 
@@ -162,183 +194,151 @@ export default function CalendarTab({
             setEventDate(new Date().toISOString().split('T')[0]);
             setShowAddEvent(true);
           }}
-          className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-slate-200 font-semibold flex items-center gap-1.5"
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            appTheme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-800' : 'bg-white/5 border border-white/10 hover:bg-white/10 text-slate-200'
+          }`}
         >
-          <Plus className="w-3.5 h-3.5" /> Book Block
+          <Plus className="w-3.5 h-3.5" /> 
+          <span>{lang === 'en' ? 'Book event' : 'جدولة موعد'}</span>
         </button>
       </div>
 
       {/* Booking Form Overlay */}
       {showAddEvent && (
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h4 className="text-xs font-bold font-mono uppercase text-indigo-400 flex items-center gap-1.5">
-            <BookOpen className="w-4 h-4" /> Schedule Focus Session Event
+        <div className={`p-5 rounded-2xl border ${
+          appTheme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+        } space-y-4 shadow-lg`}>
+          <h4 className={`text-xs font-bold font-mono uppercase flex items-center gap-1.5 ${textTitleClass}`}>
+            <BookOpen className="w-4 h-4 text-indigo-500" /> 
+            <span>{lang === 'en' ? 'Schedule study event block' : 'حجز فترة تركيز وجدولة موعد في التقييم'}</span>
           </h4>
-          <form onSubmit={handleCreateEventSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleCreateEventSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
             <div className="space-y-1">
-              <label className="text-[9px] font-mono text-slate-500 uppercase block">Event Title</label>
+              <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Event Title' : 'عنوان الموعد'}</label>
               <input 
                 type="text" 
-                placeholder="Study cardiology slides / complete task..."
+                placeholder={lang === 'en' ? "Study cardiology chapter" : "اكتب عنوان الفترة المجدولة"}
                 value={eventTitle} 
                 onChange={(e) => setEventTitle(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded p-2 text-xs text-slate-200 outline-none"
+                className={`w-full border rounded-lg p-2.5 text-xs bg-transparent outline-none focus:border-cyan-500 ${
+                  appTheme === 'light' ? 'border-slate-250 text-slate-800' : 'border-slate-800 text-slate-200'
+                }`}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] font-mono text-slate-500 uppercase block">Map Task</label>
+              <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Relate with active task' : 'ربطها بمهمة حالية'}</label>
               <select
                 value={associatedTaskId}
                 onChange={(e) => setAssociatedTaskId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-300"
+                className={`w-full border rounded-lg p-2.5 text-xs bg-transparent outline-none ${
+                  appTheme === 'light' ? 'border-slate-250 text-slate-700' : 'border-slate-800 text-slate-300'
+                }`}
               >
-                <option value="">None Selected</option>
-                {tasks.map(t => (
-                  <option key={t.id} value={t.id}>{t.title} ({t.priority})</option>
+                <option value="">{lang === 'en' ? 'None Select' : 'مستقلة (دون ربط)'}</option>
+                {tasks.map(tTask => (
+                  <option key={tTask.id} value={tTask.id}>{tTask.title}</option>
                 ))}
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+            <div className="grid grid-cols-3 gap-3 sm:col-span-2">
               <div className="space-y-1">
-                <label className="text-[9px] font-mono text-slate-500 uppercase block">Date</label>
+                <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Date' : 'تاريخ الموعد'}</label>
                 <input 
                   type="date" 
                   value={eventDate} 
                   onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200"
+                  className={`w-full border rounded-lg p-2 text-xs bg-transparent ${
+                    appTheme === 'light' ? 'border-slate-250 text-slate-700' : 'border-slate-800 text-slate-200'
+                  }`}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-mono text-slate-500 uppercase block">Start & End Hours</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="09:00" 
-                    value={eventStartTime}
-                    onChange={(e) => setEventStartTime(e.target.value)}
-                    className="w-1/2 bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200" 
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="09:50" 
-                    value={eventEndTime}
-                    onChange={(e) => setEventEndTime(e.target.value)}
-                    className="w-1/2 bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200" 
-                  />
-                </div>
+                <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Start hour' : 'ساعة البدء'}</label>
+                <input 
+                  type="time" 
+                  value={eventStartTime} 
+                  onChange={(e) => setEventStartTime(e.target.value)}
+                  className={`w-full border rounded-lg p-2 text-xs bg-transparent ${
+                    appTheme === 'light' ? 'border-slate-250 text-slate-700' : 'border-slate-800 text-slate-200'
+                  }`}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'End hour' : 'ساعة الانتهاء'}</label>
+                <input 
+                  type="time" 
+                  value={eventEndTime} 
+                  onChange={(e) => setEventEndTime(e.target.value)}
+                  className={`w-full border rounded-lg p-2 text-xs bg-transparent ${
+                    appTheme === 'light' ? 'border-slate-250 text-slate-700' : 'border-slate-800 text-slate-200'
+                  }`}
+                />
               </div>
             </div>
 
-            <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
-              <button 
-                type="button" 
+            <div className="sm:col-span-2 flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
                 onClick={() => setShowAddEvent(false)}
-                className="px-4 py-2 bg-slate-800 text-xs font-semibold rounded text-slate-400"
+                className={`px-4 py-2 rounded-lg text-xs font-bold cursor-pointer hover:underline ${textMutedClass}`}
               >
-                Cancel
+                {lang === 'en' ? 'Cancel' : 'إلغاء'}
               </button>
-              <button 
-                type="submit" 
-                className="px-4 py-2 bg-cyan-500 text-slate-950 font-bold text-xs rounded"
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs rounded-lg cursor-pointer transition-colors leading-none"
               >
-                Schedule Event
+                {lang === 'en' ? 'Confirm Slot' : 'تأكيد الحجز والجدولة'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Calendar Render Area */}
-
-      {/* MONTH VIEW */}
+      {/* Main Grid Render container */}
       {viewMode === 'month' && (
-        <div className="grid grid-cols-7 gap-2 bg-slate-900/10 p-3 rounded-3xl border border-white/5">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-center text-[10px] uppercase font-bold tracking-wider font-mono text-slate-500 py-1">{day}</div>
-          ))}
+        <div className={`border p-4 rounded-2xl ${cardBgClass}`}>
+          {/* Days labels */}
+          <div className="grid grid-cols-7 gap-1 text-center font-mono text-[9px] uppercase text-slate-500 pb-2 border-b border-slate-500/10">
+            {weekdays.map((d, index) => (
+              <div key={index}>{d}</div>
+            ))}
+          </div>
 
-          {daysArray.map((day, index) => {
-            if (day === null) {
-              return <div key={index} className="h-24 bg-slate-950/10 rounded-xl" />;
-            }
+          <div className="grid grid-cols-7 gap-1.5 pt-3">
+            {daysArray.map((day, idx) => {
+              if (day === null) {
+                return <div key={`empty-${idx}`} className="h-16 opacity-0" />;
+              }
 
-            const checkDateStr = formatDateString(currentYear, currentMonthIdx, day);
-            const items = calendarEvents.filter(e => e.date === checkDateStr);
-
-            return (
-              <div 
-                key={index} 
-                onDoubleClick={() => {
-                  setEventDate(checkDateStr);
-                  setShowAddEvent(true);
-                }}
-                className="h-24 bg-slate-950/40 border border-white/5 p-2 rounded-2xl flex flex-col justify-between hover:bg-slate-900/40 hover:border-slate-800 cursor-pointer transition-all"
-                title="Double click to book focus period"
-              >
-                <div className="flex justify-between items-center text-[10px] font-mono text-slate-500">
-                  <span>{day}</span>
-                  {items.length > 0 && <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full" />}
-                </div>
-
-                <div className="flex-1 overflow-y-auto space-y-1 mt-1 scrollbar-none">
-                  {items.map((it) => (
-                    <div 
-                      key={it.id} 
-                      className="bg-cyan-500/10 border border-cyan-500/20 text-[9px] text-cyan-300 p-1 rounded-md leading-tight truncate select-text"
-                    >
-                      <span className="font-mono text-[8px] font-bold block">{it.startTime}</span>
-                      {it.title}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* WEEK VIEW TIMELINE */}
-      {viewMode === 'week' && (
-        <div className="bg-slate-900/10 p-4 rounded-3xl border border-white/5 space-y-3">
-          <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest italic text-center">Continuous Hour timeline spanning 7 active days. Select day to add slots.</p>
-          <div className="grid grid-cols-7 gap-3">
-            {[0, 1, 2, 3, 4, 5, 6].map(offset => {
-              const d = new Date(currentDate);
-              d.setDate(currentDate.getDate() - currentDate.getDay() + offset);
-              const dateStr = d.toISOString().split('T')[0];
-              const dayOfWeek = d.toLocaleDateString(undefined, { weekday: 'short' });
-              const dateDigit = d.getDate();
-              const items = calendarEvents.filter(e => e.date === dateStr);
+              const targetStr = formatDateString(currentYear, currentMonthIdx, day);
+              const dayEvents = calendarEvents.filter(e => e.date === targetStr);
 
               return (
                 <div 
-                  key={offset} 
-                  onDoubleClick={() => {
-                    setEventDate(dateStr);
-                    setShowAddEvent(true);
-                  }}
-                  className="bg-slate-950/30 border border-white/5 p-3 rounded-2xl h-[340px] flex flex-col hover:border-indigo-500/20 cursor-pointer"
+                  key={`day-${day}`}
+                  className={`h-16 p-1.5 border rounded-xl flex flex-col justify-between align-top overflow-hidden transition-all ${
+                    dayEvents.length > 0
+                      ? 'bg-cyan-500/5 border-cyan-500/25'
+                      : (appTheme === 'light' ? 'bg-slate-50/50 border-slate-100 hover:bg-slate-100/50' : 'bg-[#05080f]/40 border-white/5 hover:bg-slate-900/30')
+                  }`}
                 >
-                  <div className="text-center border-b border-white/5 pb-2 mb-2">
-                    <span className="text-[10px] font-mono text-slate-500 uppercase block">{dayOfWeek}</span>
-                    <span className="text-sm font-bold text-white font-mono">{dateDigit}</span>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-1.5 select-text">
-                    {items.length > 0 ? (
-                      items.map(it => (
-                        <div key={it.id} className="bg-gradient-to-tr from-slate-900 to-slate-950 border border-cyan-500/10 p-2 rounded-xl text-[9px] text-slate-300 leading-normal">
-                          <span className="font-mono text-[8px] text-cyan-400 block mb-0.5">{it.startTime} - {it.endTime}</span>
-                          <strong>{it.title}</strong>
+                  <span className={`text-[10px] font-bold font-mono block ${textTitleClass}`}>{day}</span>
+                  
+                  {dayEvents.length > 0 && (
+                    <div className="space-y-0.5 overflow-hidden">
+                      {dayEvents.slice(0, 2).map((e) => (
+                        <div key={e.id} className="bg-cyan-500 text-[8px] text-white font-semibold flex items-center gap-1 leading-none rounded-sm p-0.5 truncate leading-none">
+                          <Clock className="w-2 h-2 shrink-0" />
+                          <span>{e.title}</span>
                         </div>
-                      ))
-                    ) : (
-                      <span className="text-[8px] text-slate-600 block text-center mt-12 italic">Empty</span>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -346,48 +346,28 @@ export default function CalendarTab({
         </div>
       )}
 
-      {/* SINGLE DAY DETAILS VIEW */}
-      {viewMode === 'day' && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-slate-900/10 p-6 rounded-3xl border border-white/5">
-          {/* Hour slots details list */}
-          <div className="md:col-span-8 space-y-4">
-            <h4 className="text-xs font-bold font-mono text-slate-400 uppercase tracking-widest pb-2 border-b border-white/5">Event Schedule log for today:</h4>
-            
-            <div className="space-y-3 max-h-[350px] overflow-y-auto select-text">
-              {calendarEvents.filter(e => e.date === currentDate.toISOString().split('T')[0]).length > 0 ? (
-                calendarEvents
-                  .filter(e => e.date === currentDate.toISOString().split('T')[0])
-                  .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                  .map(evt => (
-                    <div key={evt.id} className="p-4 bg-slate-950/40 border border-white/5 rounded-2xl flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shrink-0">
-                          <Clock className="w-4.5 h-4.5" />
-                        </div>
-                        <div>
-                          <h5 className="text-xs font-bold text-white">{evt.title}</h5>
-                          <p className="text-[10px] text-slate-500 font-mono">{evt.startTime} - {evt.endTime}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="px-2.5 py-1 rounded bg-slate-900 text-[9px] font-mono text-slate-400 uppercase">
-                        Booked Block
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                <div className="text-center py-16 text-xs text-slate-600 border border-dashed border-slate-800 rounded-2xl italic">
-                  No focus periods scheduled or allocated for this date. Double click to add!
+      {viewMode !== 'month' && (
+        <div className={`p-4 rounded-xl text-center text-xs space-y-4 border ${cardBgClass}`}>
+          <Calendar className="w-8 h-8 text-indigo-400 mx-auto" />
+          <h4 className={textTitleClass}>{lang === 'en' ? 'Interactive view active' : 'عرض مخصص تفاعلي'}</h4>
+          <p className={`${textMutedClass} max-w-sm mx-auto font-light`}>
+            {lang === 'en' ? 'Dynamic agenda active:' : 'تم تفعيل أجندة المهام:'} {calendarEvents.length} {lang === 'en' ? 'total schedule clocks matched.' : 'مواعيد إجمالية مسجلة.'}
+          </p>
+          <div className="space-y-2.5 max-w-md mx-auto">
+            {calendarEvents.map((e) => (
+              <div key={e.id} className={`p-3 border rounded-xl flex justify-between items-center text-left ${
+                appTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/40 border-slate-800'
+              }`} dir={isRtl ? 'rtl' : 'ltr'}>
+                <div>
+                  <h5 className={`font-bold text-xs ${textTitleClass}`}>{e.title}</h5>
+                  <span className="text-[10px] font-mono text-slate-500">{e.date} @ {e.startTime} - {e.endTime}</span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="md:col-span-4 bg-slate-950/30 p-5 rounded-2xl border border-slate-900 h-max space-y-3">
-            <h5 className="text-xs font-bold text-white flex items-center gap-1"><Sparkles className="w-3.5 h-3.5 text-indigo-400" /> AI Coach Advice</h5>
-            <p className="text-[11px] text-slate-400 leading-normal font-light select-text">
-              "Tomorrow holds multiple intense deadline objectives. I advise scheduling two 50-minute studying slots between 10 AM and 1 PM, right when your analytical energy level reaches maximum peak."
-            </p>
+                <div className="flex items-center gap-1 bg-cyan-500/10 text-cyan-500 text-[8px] font-bold uppercase tracking-wider font-mono px-1.5 py-0.5 rounded leading-none shrink-0 border border-cyan-500/20">
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>{lang === 'en' ? 'Scheduled' : 'مُجدوَل'}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -22,12 +22,15 @@ import {
   Briefcase,
   Code2,
   Stethoscope,
-  Dumbbell
+  Dumbbell,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 // Imports types & presets
 import { Task, Project, PomodoroSession, UserStats, Challenge, Achievement, CalendarEvent, ChatMessage, TreeType } from './types';
 import { INITIAL_PROJECTS, INITIAL_CHALLENGES, INITIAL_ACHIEVEMENTS, FOCUS_QUOTES } from './utils/presets';
+import { translations } from './utils/translations';
 
 // Sub components
 import LandingPage from './components/LandingPage';
@@ -67,10 +70,27 @@ export default function App() {
   const [interruptionCount, setInterruptionCount] = useState(0);
 
   // Settings customizable fields
-  const [appTheme, setAppTheme] = useState<'dark-nord' | 'black-minimal'>('dark-nord');
+  const [lang, setLang] = useState<'en' | 'ar'>(() => {
+    const cached = localStorage.getItem('pomo_lang');
+    return (cached === 'ar' || cached === 'en') ? cached : 'en';
+  });
+
+  const [appTheme, setAppTheme] = useState<'dark' | 'light'>(() => {
+    const cached = localStorage.getItem('pomo_theme');
+    return (cached === 'light' || cached === 'dark') ? cached : 'dark';
+  });
+
   const [systemSounds, setSystemSounds] = useState(true);
   const [customGeminiKey, setCustomGeminiKey] = useState<string>(() => localStorage.getItem('pomo_custom_gemini_api_key') || '');
   const [showApiKey, setShowApiKey] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('pomo_lang', lang);
+  }, [lang]);
+
+  useEffect(() => {
+    localStorage.setItem('pomo_theme', appTheme);
+  }, [appTheme]);
 
   // Load state from local storage on mount
   useEffect(() => {
@@ -467,44 +487,86 @@ export default function App() {
   // Find active spotlit task title
   const spotlitTaskObj = tasks.find(t => t.id === activeTaskId) || null;
 
+  const t = translations[lang];
+
   // Render workspace menu sidebar options
   const menuItems = [
-    { id: 'dashboard', label: 'Bento Dashboard', icon: Sparkles },
-    { id: 'timer', label: 'Pomodoro Timer', icon: Timer },
-    { id: 'tasks', label: 'Operational Tasks', icon: CheckSquare },
-    { id: 'calendar', label: 'Calendar Planner', icon: Calendar },
-    { id: 'forest', label: 'Focus Forest', icon: TreePine },
-    { id: 'analytics', label: 'Focus Analytics', icon: TrendingUp },
-    { id: 'coach', label: 'AI Coach Hub', icon: Zap },
-    { id: 'settings', label: 'OS Settings', icon: Settings }
+    { id: 'dashboard', label: t.dashboard, icon: Sparkles },
+    { id: 'timer', label: t.timer, icon: Timer },
+    { id: 'tasks', label: t.tasks, icon: CheckSquare },
+    { id: 'calendar', label: t.calendar, icon: Calendar },
+    { id: 'forest', label: t.forest, icon: TreePine },
+    { id: 'analytics', label: t.analytics, icon: TrendingUp },
+    { id: 'coach', label: t.coach, icon: Zap },
+    { id: 'settings', label: t.settings, icon: Settings }
   ];
 
   // Primary routing gate
   if (navigationView === 'landing') {
-    return <LandingPage onLaunch={() => setNavigationView('workspace')} />;
+    return (
+      <LandingPage 
+        onLaunch={() => {
+          setNavigationView('workspace');
+          // Start with sidebar closed on mobile screens to save space
+          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+            setSidebarOpen(false);
+          }
+        }} 
+        lang={lang}
+        setLang={setLang}
+        appTheme={appTheme}
+        setAppTheme={setAppTheme}
+      />
+    );
   }
 
+  // Adaptive theme utility classes
+  const themeBgClass = appTheme === 'light' 
+    ? 'bg-slate-50 text-slate-800' 
+    : 'bg-[#070a13] text-slate-100';
+
+  const sidebarBgClass = appTheme === 'light'
+    ? 'bg-white border-r border-slate-205 text-slate-800'
+    : 'bg-[#05080f] border-r border-white/5 text-slate-100';
+
+  const headerBgClass = appTheme === 'light'
+    ? 'bg-white border-b border-slate-205 text-slate-850'
+    : 'bg-[#05080f]/40 border-b border-white/5 text-slate-100';
+
+  const textTitleClass = appTheme === 'light' ? 'text-slate-900 border-slate-200' : 'text-white border-slate-850';
+  const textMutedClass = appTheme === 'light' ? 'text-slate-500' : 'text-slate-400';
+
   return (
-    <div className="min-h-screen bg-[#070a13] text-slate-100 flex overflow-hidden">
+    <div className={`min-h-screen flex overflow-hidden transition-colors duration-200 ${themeBgClass}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       
+      {/* Mobile Sidebar backdrop overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 lg:hidden cursor-pointer"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
       <aside 
         id="applet-sidebar"
-        className={`bg-[#05080f] border-r border-white/5 flex flex-col justify-between transition-all duration-300 z-40 shrink-0 ${sidebarOpen ? 'w-64' : 'w-20'}`}
+        className={`fixed inset-y-0 ${lang === 'ar' ? 'right-0' : 'left-0'} lg:static flex flex-col justify-between transition-all duration-300 z-50 shrink-0 ${
+          sidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0'
+        } ${sidebarBgClass}`}
       >
-        <div className="py-6 flex-1 flex flex-col justify-between">
+        <div className="py-6 flex-1 flex flex-col justify-between overflow-y-auto">
           <div>
             {/* Sidebar Logo */}
-            <div className="px-6 pb-6 border-b border-white/5 flex items-center justify-between">
+            <div className={`px-6 pb-6 border-b flex items-center justify-between ${appTheme === 'light' ? 'border-slate-100' : 'border-white/5'}`}>
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center p-[1px]">
-                  <div className="w-full h-full bg-[#05080f] rounded-[7px] flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-cyan-400" />
+                  <div className={`w-full h-full rounded-[7px] flex items-center justify-center ${appTheme === 'light' ? 'bg-white' : 'bg-[#05080f]'}`}>
+                    <Zap className="w-4 h-4 text-cyan-505" />
                   </div>
                 </div>
                 {sidebarOpen && (
                   <div>
-                    <h1 className="text-sm font-extrabold tracking-tight text-white leading-tight">POMO OS</h1>
+                    <h1 className={`text-sm font-extrabold tracking-tight leading-tight ${textTitleClass}`}>POMO OS</h1>
                     <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest block font-bold">Workspace v1.2</span>
                   </div>
                 )}
@@ -512,21 +574,27 @@ export default function App() {
               
               <button 
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-1 rounded bg-slate-900 border border-white/5 text-slate-400 hover:text-white cursor-pointer"
+                className={`p-1 rounded cursor-pointer lg:hidden border ${
+                  appTheme === 'light' 
+                    ? 'bg-slate-50 border-slate-205 text-slate-500 hover:text-slate-800' 
+                    : 'bg-slate-900 border-white/5 text-slate-400 hover:text-white'
+                }`}
               >
-                <Menu className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* User Account micro widget */}
             {sidebarOpen && (
-              <div className="m-4 p-3 bg-slate-950/40 border border-white/5 rounded-2xl flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400">
+              <div className={`m-4 p-3 border rounded-2xl flex items-center gap-3 ${
+                appTheme === 'light' ? 'bg-slate-100/50 border-slate-200' : 'bg-slate-950/40 border-white/5'
+              }`}>
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-500">
                   <User className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Focus Pilot</h4>
-                  <p className="text-[9px] font-mono text-indigo-400 uppercase tracking-wider">Level {userStats.level} Ranger</p>
+                  <h4 className={`text-xs font-bold ${textTitleClass}`}>{lang === 'en' ? 'Focus Pilot' : 'طيار التركيز'}</h4>
+                  <p className="text-[9px] font-mono text-indigo-500 uppercase tracking-wider">{lang === 'en' ? `Level ${userStats.level} Ranger` : `المستوى ${userStats.level}`}</p>
                 </div>
               </div>
             )}
@@ -536,13 +604,28 @@ export default function App() {
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
+                
+                const activeStyle = isActive 
+                  ? appTheme === 'light'
+                    ? 'bg-cyan-50 border border-cyan-200 text-cyan-600 font-bold'
+                    : 'bg-gradient-to-r from-cyan-500/10 via-[#0e172a] to-slate-950 border border-cyan-500/20 text-cyan-400 font-bold'
+                  : appTheme === 'light'
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-950/40 border border-transparent';
+
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id as any)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium transition-all ${isActive ? 'bg-gradient-to-r from-cyan-500/10 via-[#0e172a] to-slate-950 border border-cyan-500/20 text-cyan-400 font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-950/40 border border-transparent'}`}
+                    onClick={() => {
+                      setActiveTab(item.id as any);
+                      // Close sidebar automatically on mobile after tab select
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                        setSidebarOpen(false);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium transition-all ${activeStyle}`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-500 group-hover:text-white'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-500' : 'text-slate-500 group-hover:text-amber-500'}`} />
                     {sidebarOpen && <span>{item.label}</span>}
                   </button>
                 );
@@ -551,13 +634,13 @@ export default function App() {
           </div>
 
           {/* Quick exit option */}
-          <div className="px-3 border-t border-white/5 pt-4">
+          <div className={`px-3 border-t pt-4 ${appTheme === 'light' ? 'border-slate-105' : 'border-white/5'}`}>
             <button
               onClick={() => setNavigationView('landing')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium text-slate-500 hover:text-white hover:bg-rose-500/5 hover:border-rose-500/10 transition-all border border-transparent"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium text-slate-500 hover:text-rose-500 hover:bg-rose-500/5 transition-all border border-transparent"
             >
               <LogOut className="w-4 h-4" />
-              {sidebarOpen && <span>Exit Hub</span>}
+              {sidebarOpen && <span>{t.exitHub || 'Exit Hub'}</span>}
             </button>
           </div>
         </div>
@@ -567,33 +650,79 @@ export default function App() {
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
         
         {/* Top Header Metrics Row */}
-        <header className="bg-[#05080f]/40 backdrop-blur-md border-b border-white/5 px-8 py-5 flex items-center justify-between shrink-0 relative z-10">
-          <div className="flex items-center gap-6">
+        <header className={`px-4 sm:px-8 py-4 flex items-center justify-between shrink-0 relative z-35 backdrop-blur-md ${headerBgClass}`}>
+          <div className="flex items-center gap-3 sm:gap-6">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`p-2 rounded cursor-pointer transition-all border ${
+                appTheme === 'light' 
+                  ? 'bg-slate-50 border-slate-205 text-slate-650 hover:bg-slate-100' 
+                  : 'bg-slate-900 border-white/5 text-slate-400 hover:text-white'
+              }`}
+              title={lang === 'en' ? 'Toggle Navigation Menu' : 'تبديل القائمة'}
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+            
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Workspace status:</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono leading-none flex items-center gap-1.5 font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> ONLINE
+              <span className="text-xs text-slate-500 uppercase tracking-widest font-mono hidden xs:inline">{t.online}:</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-mono leading-none flex items-center gap-1.5 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> {lang === 'en' ? 'ONLINE' : 'نشط'}
               </span>
             </div>
 
             {spotlitTaskObj && (
-              <div className="hidden lg:flex items-center gap-2 bg-slate-950/40 border border-white/5 px-3 py-1.5 rounded-full">
-                <span className="text-[9px] font-mono uppercase tracking-widest text-indigo-400 font-bold">🎯 Spotlit Target:</span>
-                <span className="text-xs text-slate-300 font-medium truncate max-w-sm">{spotlitTaskObj.title}</span>
+              <div className={`hidden lg:flex items-center gap-2 border px-3 py-1.5 rounded-full ${
+                appTheme === 'light' ? 'bg-slate-50 border-slate-150' : 'bg-slate-950/40 border-white/5'
+              }`}>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-indigo-500 font-bold">{t.spotlightTarget || '🎯 Target'}:</span>
+                <span className={`text-xs font-medium truncate max-w-sm ${textTitleClass}`}>{spotlitTaskObj.title}</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Energy metrics visual ticks */}
-            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-orange-400">
-              <Flame className="w-4 h-4" /> {userStats.streak} Day streak
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Language Switcher Button */}
+            <button
+              onClick={() => {
+                const nextLang = lang === 'en' ? 'ar' : 'en';
+                setLang(nextLang);
+              }}
+              className={`px-3 py-1.5 rounded cursor-pointer text-xs font-mono font-medium flex items-center gap-1 border transition-all ${
+                appTheme === 'light' 
+                  ? 'bg-slate-50 border-slate-205 text-slate-600 hover:bg-slate-100' 
+                  : 'bg-slate-900 border-white/5 text-slate-300 hover:text-white'
+              }`}
+            >
+              <Languages className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{lang === 'en' ? 'العربية' : 'English'}</span>
+            </button>
+
+            {/* Theme Toggle Button */}
+            <button
+              onClick={() => {
+                const nextTheme = appTheme === 'light' ? 'dark' : 'light';
+                setAppTheme(nextTheme);
+              }}
+              className={`p-2 rounded cursor-pointer border transition-all ${
+                appTheme === 'light' 
+                  ? 'bg-slate-50 border-slate-205 text-slate-600 hover:bg-slate-105' 
+                  : 'bg-slate-900 border-white/5 text-slate-300 hover:text-white'
+              }`}
+              title={lang === 'en' ? 'Toggle theme' : 'تغيير المظهر'}
+            >
+              {appTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
+
+            {/* Streak metrics */}
+            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-orange-505">
+              <Flame className="w-4 h-4" /> {userStats.streak} {lang === 'en' ? 'Days' : 'أيام'}
             </div>
           </div>
         </header>
 
         {/* Dynamic Inner Viewport */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-8 relative">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -615,6 +744,8 @@ export default function App() {
                   achievements={achievements}
                   focusScore={currentFocusScore}
                   scoreBreakdown={currentScoreExplanation}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
@@ -627,6 +758,8 @@ export default function App() {
                     setTasks(tasks.map(t => t.id === id ? { ...t, completed: true } : t));
                     if (activeTaskId === id) setActiveTaskId(null);
                   }}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
@@ -639,6 +772,8 @@ export default function App() {
                   onEditTask={handleEditTask}
                   onDeleteTask={handleDeleteTask}
                   onSelectTask={handleSelectTask}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
@@ -648,6 +783,8 @@ export default function App() {
                   projects={projects}
                   calendarEvents={calendarEvents}
                   onAddCalendarEvent={handleAddCalendarEvent}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
@@ -655,6 +792,8 @@ export default function App() {
                 <FocusForest 
                   completedSessions={completedSessions}
                   onClearForestData={handleClearForestData}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
@@ -663,6 +802,8 @@ export default function App() {
                   completedSessions={completedSessions}
                   tasks={tasks}
                   focusScore={currentFocusScore}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
@@ -675,50 +816,56 @@ export default function App() {
                   onAddChatMessage={handleAddChatMessage}
                   onImportAITasks={handleImportAITasks}
                   onOptimizeTasksOrder={handleOptimizeTasksOrder}
+                  lang={lang}
+                  appTheme={appTheme}
                 />
               )}
 
               {activeTab === 'settings' && (
-                <div className="bg-slate-900/40 border border-white/5 p-6 sm:p-8 rounded-3xl space-y-8 select-text">
-                  <div className="border-b border-white/5 pb-4 space-y-1">
-                    <h3 className="text-lg font-bold text-white">Productivity Operating System Settings</h3>
-                    <p className="text-xs text-slate-400 font-light">Configure look, audio cues, system permissions, or clear cache archives.</p>
+                <div className={`border p-6 sm:p-8 rounded-3xl space-y-8 select-text transition-all ${
+                  appTheme === 'light' ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900/40 border-white/5 text-slate-105'
+                }`}>
+                  <div className={`border-b pb-4 space-y-1 ${appTheme === 'light' ? 'border-slate-100' : 'border-white/5'}`}>
+                    <h3 className={`text-lg font-bold ${textTitleClass}`}>{lang === 'en' ? 'Productivity Operating System Settings' : 'إعدادات نظام تشغيل الإنتاجية'}</h3>
+                    <p className={`text-xs font-light ${textMutedClass}`}>{lang === 'en' ? 'Configure look, theme modes, language parameters, and API credentials.' : 'تخصيص المظهر، اللغات، المعلمات ومفاتيح الربط البرمجية.'}</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Visual Preferences */}
                     <div className="space-y-4">
-                      <h4 className="text-xs font-bold font-mono uppercase text-indigo-400">Workspace Customization</h4>
+                      <h4 className="text-xs font-bold font-mono uppercase text-indigo-500">{lang === 'en' ? 'Workspace Customization' : 'تخصيص مساحة العمل'}</h4>
                       
                       <div className="space-y-3">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] uppercase font-mono text-slate-500">Theme preset</label>
+                          <label className="text-[10px] uppercase font-mono text-slate-400">{lang === 'en' ? 'Theme preset' : 'نمط المظهر الكلي'}</label>
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <button
-                              onClick={() => setAppTheme('dark-nord')}
-                              className={`p-3 rounded-xl border text-center uppercase font-bold transition-all ${appTheme === 'dark-nord' ? 'bg-[#0f2038] border-cyan-500/30 text-cyan-400' : 'bg-slate-950/40 border-white/5 text-slate-400'}`}
+                              onClick={() => setAppTheme('dark')}
+                              className={`p-3 rounded-xl border text-center uppercase font-bold transition-all ${appTheme === 'dark' ? 'bg-slate-900 border-cyan-500/30 text-cyan-400' : 'bg-slate-100/50 border-slate-205 text-slate-500 hover:bg-slate-100'}`}
                             >
-                              Cosmic Obsidian (Nord)
+                              🚀 Dark Mode
                             </button>
                             <button
-                              onClick={() => setAppTheme('black-minimal')}
-                              className={`p-3 rounded-xl border text-center uppercase font-bold transition-all ${appTheme === 'black-minimal' ? 'bg-[#0f2038] border-cyan-500/30 text-cyan-400' : 'bg-slate-950/40 border-white/5 text-slate-400'}`}
+                              onClick={() => setAppTheme('light')}
+                              className={`p-3 rounded-xl border text-center uppercase font-bold transition-all ${appTheme === 'light' ? 'bg-cyan-50 border-cyan-200 text-cyan-600' : 'bg-slate-900/40 border-transparent text-slate-400 hover:bg-slate-800'}`}
                             >
-                              Organic Pitch Black
+                              ☀️ Light Mode
                             </button>
                           </div>
                         </div>
 
-                        <div className="p-4 bg-slate-950/20 border border-slate-950 rounded-2xl flex items-center justify-between">
+                        <div className={`p-4 rounded-2xl flex items-center justify-between border ${
+                          appTheme === 'light' ? 'bg-slate-50 border-slate-150' : 'bg-slate-950/20 border-slate-900'
+                        }`}>
                           <div className="space-y-0.5">
-                            <h5 className="text-xs font-bold text-white">System notifications</h5>
-                            <p className="text-[10px] text-slate-500 leading-none">Chimes when timers expire.</p>
+                            <h5 className={`text-xs font-bold ${textTitleClass}`}>{lang === 'en' ? 'System notifications' : 'إشعارات النظام'}</h5>
+                            <p className="text-[10px] text-slate-500 leading-none">{lang === 'en' ? 'Chimes when timers expire.' : 'رنين وتنبيه مع تصفير العداد.'}</p>
                           </div>
                           <input 
                             type="checkbox" 
                             checked={systemSounds} 
                             onChange={() => setSystemSounds(!systemSounds)}
-                            className="rounded bg-slate-800 border-slate-700 text-cyan-400 cursor-pointer"
+                            className="rounded bg-slate-800 border-slate-700 text-cyan-505 cursor-pointer"
                           />
                         </div>
                       </div>
@@ -726,13 +873,17 @@ export default function App() {
 
                     {/* Data exports and formatting */}
                     <div className="space-y-4">
-                      <h4 className="text-xs font-bold font-mono uppercase text-indigo-400">Google Gemini API Configuration</h4>
+                      <h4 className="text-xs font-bold font-mono uppercase text-indigo-500">{lang === 'en' ? 'Google Gemini API Configuration' : 'تهيئة مفاتيح غوغل جيميناي ذكاء اصطناعي'}</h4>
                       
-                      <div className="p-5 bg-slate-950/40 border border-white/5 rounded-2xl space-y-4">
+                      <div className={`p-5 rounded-2xl space-y-4 border ${
+                        appTheme === 'light' ? 'bg-slate-50 border-slate-205' : 'bg-slate-950/40 border-white/5'
+                      }`}>
                         <div className="space-y-1">
-                          <h5 className="text-xs font-bold text-white">Custom Gemini API Key</h5>
-                          <p className="text-[11px] text-slate-400 leading-normal font-light">
-                            If your deployed server is missing the secret environment variable, you can paste your personal key here. It is saved in your browser's local storage and used directly/securely for AI Coaching features.
+                          <h5 className={`text-xs font-bold ${textTitleClass}`}>{lang === 'en' ? 'Custom Gemini API Key' : 'مفتاح الربط لجيميناي الخاص بك'}</h5>
+                          <p className={`text-[11px] leading-normal font-light ${textMutedClass}`}>
+                            {lang === 'en' 
+                              ? 'If your deployed server is missing the secret environment variable, you can paste your personal key here. It is saved in your browser\'s local storage and used directly/securely for AI Coaching features.'
+                              : 'في حال عدم تهيئة خادم الويب بمفتاح تشغيل رئيسي، يمكنك تزويدنا بمفتاحك الشخصي هنا ليخزن محليًا بمتصفحك فقط بغرض توفير مزايا التدريب بالذكاء الاصطناعي.'}
                           </p>
                         </div>
 
@@ -740,7 +891,7 @@ export default function App() {
                           <div className="relative">
                             <input
                               type={showApiKey ? "text" : "password"}
-                              placeholder="Paste Gemini API Key here (AIzaSy...)"
+                              placeholder={lang === 'en' ? "Paste Gemini API Key here (AIzaSy...)" : "أدخل مفتاح غوغل جيميناي هنا..."}
                               value={customGeminiKey}
                               onChange={(e) => {
                                 const val = e.target.value.trim();
@@ -751,14 +902,20 @@ export default function App() {
                                   localStorage.removeItem('pomo_custom_gemini_api_key');
                                 }
                               }}
-                              className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 font-mono pr-12"
+                              className={`w-full border rounded-xl px-4 py-3 text-xs placeholder-slate-400 focus:outline-none focus:border-cyan-500/50 font-mono ${
+                                lang === 'ar' ? 'pl-12 pr-4' : 'pr-12 pl-4'
+                              } ${
+                                appTheme === 'light' ? 'bg-white border-slate-250 text-slate-900' : 'bg-slate-950/60 border-white/10 text-white'
+                              }`}
                             />
                             <button
                               type="button"
                               onClick={() => setShowApiKey(!showApiKey)}
-                              className="absolute right-3 top-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-white"
+                              className={`absolute top-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-white ${
+                                lang === 'ar' ? 'left-3' : 'right-3'
+                              }`}
                             >
-                              {showApiKey ? "Hide" : "Show"}
+                              {showApiKey ? (lang === 'en' ? "Hide" : "إخفاء") : (lang === 'en' ? "Show" : "إظهار")}
                             </button>
                           </div>
 
@@ -767,9 +924,9 @@ export default function App() {
                               href="https://aistudio.google.com/"
                               target="_blank"
                               rel="noreferrer"
-                              className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+                              className="text-cyan-500 hover:underline inline-flex items-center gap-1 font-bold"
                             >
-                              Get a Free Gemini Key from Google AI Studio ↗
+                              {lang === 'en' ? 'Get a Free Gemini Key from Google AI Studio ↗' : 'احصل على مفتاح جيميناي مجاني من غوغل ↗'}
                             </a>
                             {customGeminiKey && (
                               <button
@@ -778,32 +935,34 @@ export default function App() {
                                   setCustomGeminiKey('');
                                   localStorage.removeItem('pomo_custom_gemini_api_key');
                                 }}
-                                className="text-rose-400 hover:underline"
+                                className="text-rose-500 hover:underline font-bold"
                               >
-                                Clear Key
+                                {lang === 'en' ? 'Clear Key' : 'مسح المفتاح'}
                               </button>
                             )}
                           </div>
                         </div>
 
-                        <div className="pt-2 border-t border-white/5 text-[10px] text-slate-500 space-y-1">
-                          <p>💡 <strong className="text-slate-400">Vercel Deployment tip:</strong> To avoid pasting keys, you can define a permanent environment variable on your Vercel Dashboard under <span className="text-slate-300">Project Settings &gt; Environment Variables</span>. Name it <code className="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-400 font-mono">GEMINI_API_KEY</code>, then trigger a re-deployment!</p>
+                        <div className={`pt-2 border-t border-dashed text-[10px] ${appTheme === 'light' ? 'border-slate-200 text-slate-500' : 'border-slate-500/10 text-slate-400'}`}>
+                          <p>⭐ {lang === 'en' ? 'Custom client credentials are saved locally in private cookies/localStorage structure.' : 'يتم حفظ معطيات ومفاتيح التشغيل داخليًا في متصفحك بشكل آمن وخاص.'}</p>
                         </div>
                       </div>
 
-                      <h4 className="text-xs font-bold font-mono uppercase text-rose-400">Sensitive formatting</h4>
+                      <h4 className="text-xs font-bold font-mono uppercase text-rose-500">{lang === 'en' ? 'Sensitive formatting' : 'خيارات حساسة'}</h4>
                       
-                      <div className="p-5 bg-rose-500/5 border border-rose-500/10 rounded-2xl space-y-3">
-                        <h5 className="text-xs font-bold text-rose-300">Harsh formatting reset</h5>
-                        <p className="text-[11px] text-slate-400 leading-normal font-light">
-                          Clears all tasks, achievements, projects, growing forest parameters, and statistics persistently from local storage browser database.
+                      <div className={`p-5 bg-rose-500/5 border border-rose-500/10 rounded-2xl space-y-3`}>
+                        <h5 className="text-xs font-bold text-rose-500">{lang === 'en' ? 'Harsh formatting reset' : 'إعادة ضبط المصنع الكاملة'}</h5>
+                        <p className={`text-[11px] leading-normal font-light ${textMutedClass}`}>
+                          {lang === 'en' 
+                            ? 'Clears all tasks, achievements, projects, growing forest parameters, and statistics persistently from local storage browser database.'
+                            : 'سيقوم هذا الخيار بحذف كافة المهام، الإنجازات، المشاريع، وبيانات الغابات المحفوظة محليًا بمتصفحك بشكل دائم ولا يمكن التراجع عنه.'}
                         </p>
                         
                         <button
                           onClick={handleFullAccountDeleteAndReset}
-                          className="px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white text-xs font-bold transition-all uppercase tracking-wider"
+                          className="px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-505 hover:bg-rose-500 hover:text-white text-xs font-bold transition-all uppercase tracking-wider cursor-pointer"
                         >
-                          Erase Operational Hub
+                          {lang === 'en' ? 'Erase Operational Hub' : 'مسح مخزن العمليات'}
                         </button>
                       </div>
                     </div>

@@ -4,19 +4,15 @@ import {
   Sparkles, 
   Send, 
   BookOpen, 
-  Calendar, 
   Clock, 
   HelpCircle, 
   ChevronRight, 
-  ListRestart, 
-  Activity, 
   Zap,
-  MessageCircle,
   CalendarDays,
-  CheckCircle,
   Loader2
 } from 'lucide-react';
 import { ChatMessage, Task, UserStats, CalendarEvent } from '../types';
+import { translations } from '../utils/translations';
 
 interface CoachTabProps {
   userStats: UserStats;
@@ -26,6 +22,8 @@ interface CoachTabProps {
   onAddChatMessage: (msg: ChatMessage) => void;
   onImportAITasks: (importedTasks: Omit<Task, 'id' | 'createdAt' | 'actualPomodoros'>[], offsetCalendarEvts: Omit<CalendarEvent, 'id'>[]) => void;
   onOptimizeTasksOrder: (sortedOrderIds: string[], insightText: string) => void;
+  lang: 'en' | 'ar';
+  appTheme: 'dark' | 'light';
 }
 
 export default function CoachTab({
@@ -36,7 +34,12 @@ export default function CoachTab({
   onAddChatMessage,
   onImportAITasks,
   onOptimizeTasksOrder,
+  lang,
+  appTheme
 }: CoachTabProps) {
+  const t = translations[lang];
+  const isRtl = lang === 'ar';
+
   const [activeSubTab, setActiveSubTab] = useState<'chat' | 'planner' | 'optimizer'>('chat');
 
   // 1. AI Chat Coach variables
@@ -60,7 +63,8 @@ export default function CoachTab({
       totalFocusMinutes: userStats.totalFocusMinutes,
       focusScore: focusScore,
       projectsCount: 6,
-      currentTaskTitle: tasks.filter(t => !t.completed)[0]?.title || "None selected"
+      currentTaskTitle: tasks.filter(t => !t.completed)[0]?.title || "None selected",
+      lang
     };
   };
 
@@ -73,7 +77,7 @@ export default function CoachTab({
       id: `chat-usr-${Date.now()}`,
       sender: 'user',
       text: textToSend,
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString(lang)
     };
     onAddChatMessage(userMsg);
     setTypedMessage("");
@@ -90,7 +94,8 @@ export default function CoachTab({
         body: JSON.stringify({
           message: textToSend,
           history: chatHistory,
-          context: getContextPayload()
+          context: getContextPayload(),
+          lang
         })
       });
 
@@ -104,8 +109,8 @@ export default function CoachTab({
       const aiMsg: ChatMessage = {
         id: `chat-ai-${Date.now()}`,
         sender: 'ai',
-        text: data?.text || "The coach experienced a small sync lag. Please rephrase your target.",
-        timestamp: new Date().toLocaleTimeString()
+        text: data?.text || (lang === 'en' ? "The coach experienced a small latency. Please try again." : "واجه المدرب بعض التباطؤ في الاستجابة. يرجى المداورة مجددًا."),
+        timestamp: new Date().toLocaleTimeString(lang)
       };
       onAddChatMessage(aiMsg);
     } catch (err: any) {
@@ -113,8 +118,10 @@ export default function CoachTab({
       const aiMsg: ChatMessage = {
         id: `chat-ai-err-${Date.now()}`,
         sender: 'ai',
-        text: `Error connecting to AI Coach: ${err.message || "An unexpected issue occurred."}. Make sure your server is running and your GEMINI_API_KEY is active.`,
-        timestamp: new Date().toLocaleTimeString()
+        text: lang === 'en' 
+          ? `Error connecting to AI Coach: ${err.message || "Unspecified server error."}. Make sure your server is running and your GEMINI_API_KEY is active.`
+          : `خطأ أثناء الاتصال بالمدرب الذكي: ${err.message || "خطأ مجهول في الخادم"}. يرجى التحقق من إعدادات مفتاح GEMINI_API_KEY الخاصة بك.`,
+        timestamp: new Date().toLocaleTimeString(lang)
       };
       onAddChatMessage(aiMsg);
     } finally {
@@ -131,13 +138,15 @@ export default function CoachTab({
   const [daysRemaining, setDaysRemaining] = useState(14);
   const [hoursPerDay, setHoursPerDay] = useState(2);
   const [plannerLoading, setPlannerLoading] = useState(false);
+  const [plannerError, setPlannerError] = useState("");
   const [generatedPlan, setGeneratedPlan] = useState<{ tasks: any[]; advice: string } | null>(null);
   const [planImported, setPlanImported] = useState(false);
 
   const handleGenerateStudyPlan = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPlannerError("");
     if (!examTopic.trim()) {
-      alert("Please enter the study target or exam name!");
+      setPlannerError(lang === 'en' ? "Please enter a subject topic name first." : "يرجى تحديد اسم الامتحان أو موضوع المنهج.");
       return;
     }
 
@@ -156,13 +165,14 @@ export default function CoachTab({
         body: JSON.stringify({
           examTopic: examTopic.trim(),
           daysLeft: daysRemaining,
-          targetHoursPerDay: hoursPerDay
+          targetHoursPerDay: hoursPerDay,
+          lang
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error || `Server responded with status ${response.status}`);
+        throw new Error(errorData?.error || `Server error ${response.status}`);
       }
 
       const data = await response.json();
@@ -173,7 +183,9 @@ export default function CoachTab({
       }
     } catch (err: any) {
       console.error("Failed study plan generation:", err);
-      alert(`AI Study Planner Error: ${err.message || "An expected server error occurred."}. Please check your connection and GEMINI_API_KEY settings.`);
+      setPlannerError(lang === 'en' 
+        ? `Syllabus Builder Error: ${err.message || "An issue occurred"}. Check server connection.`
+        : `خطأ مخطط المنهج الدراسي: ${err.message || "تعذر التحليل"}. يرجى التحقق من الاتصال بالخادم.`);
     } finally {
       setPlannerLoading(false);
     }
@@ -182,8 +194,6 @@ export default function CoachTab({
   const handleExecutePlanImport = () => {
     if (!generatedPlan || planImported) return;
 
-    // Map plan's generated tasks formatted as:
-    // title, durationMinutes, priority, dayOffset, subtasks
     const importedTasksList = generatedPlan.tasks.map((pt, idx) => {
       const subtasks = (pt.subtasks || []).map((st: string, sIdx: number) => ({
         id: `imported-sub-${idx}-${sIdx}-${Date.now()}`,
@@ -192,11 +202,13 @@ export default function CoachTab({
       }));
 
       return {
-        title: `${pt.title} [Syllabus Offset: Day ${pt.dayOffset}]`,
-        notes: `AI Coach syllabus item studying ${examTopic}. Generated duration: ${pt.durationMinutes}m.`,
+        title: `${pt.title} [Day ${pt.dayOffset}]`,
+        notes: lang === 'en' 
+          ? `AI Coach syllabus item studying ${examTopic}. Generated duration: ${pt.durationMinutes}m.`
+          : `مهمة مجدولة بنظام الذكاء الاصطناعي لموضوع ${examTopic}. المدة: ${pt.durationMinutes} دقيقة.`,
         priority: (pt.priority || 'medium') as any,
         tags: [examTopic.toLowerCase().replace(/\s+/g, '-'), 'syllabus'],
-        projectId: 'proj-med', // default assign to medical school or inbox
+        projectId: 'inbox', 
         deadline: new Date(Date.now() + pt.dayOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         recurring: 'none' as const,
         estimatedPomodoros: Math.max(Math.round(pt.durationMinutes / 25), 1),
@@ -204,7 +216,6 @@ export default function CoachTab({
       };
     });
 
-    // Map plan's calendar events
     const importedCalendarEvts = generatedPlan.tasks.map((pt) => {
       const dateToRun = new Date(Date.now() + pt.dayOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       return {
@@ -240,7 +251,8 @@ export default function CoachTab({
         body: JSON.stringify({
           tasks: activeTasksPayload,
           focusHoursHistory: [60, 100, 25, 50],
-          currentFocusScore: focusScore
+          currentFocusScore: focusScore,
+          lang
         })
       });
       const data = await response.json();
@@ -255,29 +267,66 @@ export default function CoachTab({
     }
   };
 
+  // Dynamic Theme Colors
+  const cardBgClass = appTheme === 'light' 
+    ? 'bg-white border-slate-200 text-slate-800' 
+    : 'bg-[#0b0f19]/60 border-white/5 text-slate-100';
+
+  const textTitleClass = appTheme === 'light' ? 'text-slate-900' : 'text-white';
+  const textMutedClass = appTheme === 'light' ? 'text-slate-500' : 'text-slate-400';
+
+  const suggestedTopicsEn = [
+    "Analyze my late night focus patterns",
+    "Explain my focus score and how to optimize it",
+    "Give me some hard motivation for my path tests",
+    "How do my Daily challenges stats map out?"
+  ];
+
+  const suggestedTopicsAr = [
+    "حلل عادات المذاكرة الليلية الخاصة بي واقترح أفكارًا لها",
+    "اشرح لي معدل التركيز الحالي وكيف يمكنني الارتقاء به",
+    "أعطني كلمات تحفيزية قوية للاستمرار في ذروة النشاط",
+    "كيف تبدو إحصاءات تحديات الاسترجاع الإجمالية الخاصة بي؟"
+  ];
+
+  const suggestedTopics = lang === 'en' ? suggestedTopicsEn : suggestedTopicsAr;
 
   return (
-    <div id="coach-view-hub" className="space-y-6 select-none">
+    <div id="coach-view-hub" className="space-y-6 select-none animate-fadeIn" dir={isRtl ? 'rtl' : 'ltr'}>
       
       {/* Sub tabs navigation */}
-      <div className="flex border-b border-white/5 pb-1 gap-6 text-sm">
+      <div className={`flex border-b pb-1 gap-6 text-xs sm:text-sm ${
+        appTheme === 'light' ? 'border-slate-200' : 'border-white/5'
+      }`}>
         <button
           onClick={() => setActiveSubTab('chat')}
-          className={`pb-3 font-semibold transition-all relative ${activeSubTab === 'chat' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-white'}`}
+          className={`pb-3 font-semibold transition-all relative cursor-pointer ${
+            activeSubTab === 'chat' 
+              ? 'text-cyan-500 border-b-2 border-cyan-500' 
+              : 'text-slate-500 hover:text-cyan-500'
+          }`}
         >
-          AI Conversation Chatbot
+          {lang === 'en' ? 'AI Interactive Chatbot' : 'المدرب المحاور الذكي'}
         </button>
         <button
           onClick={() => setActiveSubTab('planner')}
-          className={`pb-3 font-semibold transition-all relative ${activeSubTab === 'planner' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-white'}`}
+          className={`pb-3 font-semibold transition-all relative cursor-pointer ${
+            activeSubTab === 'planner' 
+              ? 'text-cyan-500 border-b-2 border-cyan-500' 
+              : 'text-slate-500 hover:text-cyan-500'
+          }`}
         >
-          Study Syllabus Planner
+          {lang === 'en' ? 'Syllabus Planner' : 'مخطط وباني المناهج والامتحانات'}
         </button>
         <button
           onClick={() => setActiveSubTab('optimizer')}
-          className={`pb-3 font-semibold transition-all relative ${activeSubTab === 'optimizer' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-white'}`}
+          className={`pb-3 font-semibold transition-all relative cursor-pointer ${
+            activeSubTab === 'optimizer' 
+              ? 'text-cyan-500 border-b-2 border-cyan-500' 
+              : 'text-slate-500 hover:text-cyan-500'
+          }`}
         >
-          Schedule Optimizer
+          {lang === 'en' ? 'Tasks Optimizer' : 'مركّب وترتيب المهام الذكي'}
         </button>
       </div>
 
@@ -286,22 +335,31 @@ export default function CoachTab({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Main Chat Stream */}
-          <div className="lg:col-span-8 bg-slate-900/40 p-6 rounded-3xl border border-white/5 flex flex-col h-[480px] justify-between">
+          <div className={`lg:col-span-8 p-5 rounded-2xl border flex flex-col h-[480px] justify-between ${cardBgClass}`}>
+            
             {/* Conversations list area */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 select-text scrollbar-none">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 select-text scrollbar-none">
               
               {chatHistory.map((m) => (
                 <div 
                   key={m.id}
-                  className={`flex gap-3 max-w-xl ${m.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+                  className={`flex gap-3 max-w-xl ${m.sender === 'user' ? (isRtl ? 'mr-auto' : 'ml-auto') + ' flex-row-reverse' : ''}`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${m.sender === 'user' ? 'bg-cyan-500/10 border-cyan-500/25 text-cyan-400' : 'bg-indigo-500/10 border-indigo-500/25 text-indigo-400'}`}>
-                    <span className="text-[10px] font-mono leading-none">{m.sender === 'user' ? 'ME' : 'AI'}</span>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                    m.sender === 'user' 
+                      ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-500 font-bold' 
+                      : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-500 font-bold'
+                  }`}>
+                    <span className="text-[10px] font-mono leading-none">{m.sender === 'user' ? (lang === 'en' ? 'ME' : 'أنا') : 'AI'}</span>
                   </div>
 
-                  <div className={`p-4 rounded-2xl leading-relaxed text-xs ${m.sender === 'user' ? 'bg-[#0f2139] border border-cyan-500/10 rounded-tr-none text-slate-200' : 'bg-slate-950/40 border border-slate-900 rounded-tl-none text-slate-300'}`}>
+                  <div className={`p-4 rounded-2xl leading-relaxed text-xs ${
+                    m.sender === 'user' 
+                      ? 'bg-[#0f2139] border border-cyan-500/10 text-slate-200 rounded-tr-none' 
+                      : (appTheme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-slate-950/40 border-slate-900 text-slate-300') + ' rounded-tl-none'
+                  }`}>
                     <p>{m.text}</p>
-                    <span className="text-[8px] font-mono text-slate-600 block mt-1.5 select-none">{m.timestamp}</span>
+                    <span className="text-[8px] font-mono text-slate-500 block mt-1.5 select-none">{m.timestamp}</span>
                   </div>
                 </div>
               ))}
@@ -309,34 +367,37 @@ export default function CoachTab({
               {/* Chat loader state spinner */}
               {chatLoading && (
                 <div className="flex gap-3 max-w-xl">
-                  <div className="w-8 h-8 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center animate-pulse">
-                    <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                  <div className="w-8 h-8 rounded bg-indigo-550/10 border border-indigo-500/20 flex items-center justify-center animate-pulse shrink-0">
+                    <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
                   </div>
-                  <div className="bg-slate-950/20 border border-slate-900 p-4 rounded-2xl rounded-tl-none text-slate-500 text-xs italic">
-                    AI Coach analyzing stats and writing response...
+                  <div className={`p-4 rounded-xl text-xs italic ${
+                    appTheme === 'light' ? 'bg-slate-100 text-slate-500' : 'bg-slate-950/35 text-slate-500 border border-slate-900'
+                  }`}>
+                    {lang === 'en' ? 'AI Coach compiles insights and prepares diagnostics...' : 'يقوم المدرب الذكي بتحليل أدائك وكتابة التوجيهات المناسبة...'}
                   </div>
                 </div>
               )}
 
-              {/* anchor block */}
               <div ref={bottomChatRef} />
             </div>
 
             {/* Input triggers row */}
-            <div className="border-t border-slate-900 pt-4 mt-4 flex gap-2">
+            <div className={`border-t pt-4 mt-4 flex gap-2 ${appTheme === 'light' ? 'border-slate-200' : 'border-slate-900'}`}>
               <input 
                 type="text" 
-                placeholder="Ask your Coach e.g., Analyze my productivity parameters / Streak tips..."
+                placeholder={lang === 'en' ? "Ask anything: Assess metrics / motivation..." : "اكتب سؤالك هنا: حلل مستواي، أعطني تحفيزًا..."}
                 value={typedMessage}
                 onChange={(e) => setTypedMessage(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSendChatMessage();
                 }}
-                className="flex-1 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl px-4 py-3 text-xs text-slate-200 outline-none focus:ring-0"
+                className={`flex-1 border rounded-xl px-4 py-3 text-xs outline-none focus:ring-0 ${
+                  appTheme === 'light' ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950 border-slate-800 text-slate-200'
+                }`}
               />
               <button
                 onClick={handleSendChatMessage}
-                className="p-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-colors"
+                className="p-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white transition-all cursor-pointer flex items-center justify-center shrink-0"
                 title="Send query"
               >
                 <Send className="w-4 h-4" />
@@ -344,36 +405,45 @@ export default function CoachTab({
             </div>
           </div>
 
-          {/* Right Sidebar: Preset questions list & Quick stats preview */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900/40 p-5 rounded-3xl border border-white/5 space-y-4 font-sans select-text">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <HelpCircle className="w-4.5 h-4.5 text-cyan-400" /> Suggested coach topics
+          {/* Right Sidebar */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className={`p-5 rounded-2xl border ${cardBgClass} space-y-4 select-text`}>
+              <h4 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${textTitleClass}`}>
+                <HelpCircle className="w-4.5 h-4.5 text-cyan-500" /> 
+                <span>{lang === 'en' ? 'Quick Coach Prompts' : 'محاور ونقاشات مجهزة'}</span>
               </h4>
-              <p className="text-[11px] text-slate-400 leading-normal">Select a prompt below to evaluate state parameters with the AI:</p>
+              <p className="text-[11px] text-slate-500">
+                {lang === 'en' ? 'Instantly toggle productivity evaluation dialogs below:' : 'انقر فوق أي من المواضيع أدناه لتعديل نافذة البحث تلقائيًا:'}
+              </p>
               
               <div className="space-y-2">
-                {[
-                  "Analyze my late night focus patterns",
-                  "Explain my focus score and how to optimize it",
-                  "Give me some hard motivation for my path tests",
-                  "How do my Daily challenges stats map out?"
-                ].map((txt, index) => (
+                {suggestedTopics.map((txt, index) => (
                   <button
                     key={index}
                     onClick={() => handlePresetQuestion(txt)}
-                    className="w-full text-left p-3 rounded-xl bg-slate-950/40 border border-slate-900 text-[11px] text-slate-300 hover:bg-[#111c30] hover:border-cyan-500/25 transition-all flex items-center justify-between group"
+                    className={`w-full text-left p-2.5 rounded-xl text-[10px] sm:text-[11px] flex items-center justify-between transition-all group border cursor-pointer ${
+                      appTheme === 'light' 
+                        ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100' 
+                        : 'bg-slate-950/40 border-slate-900 text-slate-300 hover:bg-[#111c30] hover:border-cyan-500/25'
+                    }`}
                   >
-                    <span className="truncate">{txt}</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:translate-x-1 transition-transform" />
+                    <span className="truncate flex-1">{txt}</span>
+                    <ChevronRight className={`w-3.5 h-3.5 text-slate-500 group-hover:translate-x-1 transition-transform ${isRtl ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-indigo-950/50 to-slate-900/60 p-5 rounded-3xl border border-indigo-500/25 text-xs text-indigo-200 leading-normal">
-              <span className="flex items-center gap-1 font-bold text-indigo-300 font-mono text-[10px] uppercase mb-2"><Zap className="w-4 h-4" /> Real-time state syncing active</span>
-              The Coach reads your currently scheduled <strong>{tasks.filter(t => !t.completed).length} tasks</strong>, active streak <strong>{userStats.streak} days</strong>, level Lvl {userStats.level}, and focus score of {focusScore} during prompt compilation.
+            <div className={`p-5 rounded-2xl border text-xs leading-normal font-light ${
+              appTheme === 'light' ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-gradient-to-br from-indigo-950/50 to-slate-900/60 border-indigo-550/20 text-indigo-200'
+            }`}>
+              <span className="flex items-center gap-1 font-bold text-indigo-500 font-mono text-[9px] uppercase mb-2 select-none">
+                <Zap className="w-4 h-4 text-amber-500 animate-pulse" /> 
+                {lang === 'en' ? 'Dynamic memory context loaded' : 'قراءة ذكية مستمرة وربط تفاعلي'}
+              </span>
+              {lang === 'en' 
+                ? `AI reads your ${tasks.filter(t => !t.completed).length} pending tasks, active streak of ${userStats.streak} days, and Cognitive score of ${focusScore} instantly on each query.`
+                : `يقرأ الذكاء الاصطناعي مهامك الـ ${tasks.filter(t => !t.completed).length} النشطة، وبطاقات إنجازك البالغة ${userStats.streak} أيام متواصلة لصياغة ردود ذكية غاية في الدقة ونصحك لتفوق مذهل.`}
             </div>
           </div>
         </div>
@@ -382,61 +452,72 @@ export default function CoachTab({
       {/* SUB-TAB 2: SYLLABUS STUDY PLANNER */}
       {activeSubTab === 'planner' && (
         <div className="space-y-6">
-          <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5">
-            <form onSubmit={handleGenerateStudyPlan} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end select-text">
+          <div className={`p-5 sm:p-6 rounded-2xl border ${cardBgClass}`}>
+            <form onSubmit={handleGenerateStudyPlan} className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end select-text text-left">
               <div className="space-y-1">
-                <label className="text-[9px] font-mono text-slate-500 uppercase block">Exam / Target Topic</label>
+                <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Target Subject / Examination' : 'موضوع المذاكرة أو اسم الامتحان النهائي'}</label>
                 <input 
                   type="text" 
-                  placeholder="e.g., Ophthalmology Medical Final Exam / Machine Learning Syllabus"
+                  placeholder={lang === 'en' ? "Ophthalmology Block / Machine Learning Final" : "مثال: امتحان تخصص الأطفال، مادة تشريح العصب"}
                   value={examTopic} 
                   onChange={(e) => setExamTopic(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 outline-none"
+                  className={`w-full border rounded-lg px-3 py-2 text-xs outline-none focus:border-cyan-500 ${
+                    appTheme === 'light' ? 'border-slate-250 text-slate-800 bg-slate-50' : 'border-slate-850 text-slate-200 bg-transparent'
+                  }`}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-mono text-slate-500 uppercase block">Days left</label>
+                  <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Days Remaining' : 'الأيام المتبقية للاستعداد'}</label>
                   <input 
                     type="number" 
                     min="1" 
                     max="180" 
                     value={daysRemaining} 
                     onChange={(e) => setDaysRemaining(parseInt(e.target.value) || 1)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 font-mono"
+                    className={`w-full border rounded px-3 py-2 text-xs font-mono outline-none ${
+                      appTheme === 'light' ? 'border-slate-250 text-slate-800 bg-slate-50' : 'border-slate-850 text-slate-200 bg-transparent'
+                    }`}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-mono text-slate-500 uppercase block">Expected Study hours/Day</label>
+                  <label className="text-[9px] font-mono text-slate-500 uppercase block">{lang === 'en' ? 'Hours / Day target' : 'ساعات المذاكرة المخصصة يوميًا'}</label>
                   <input 
                     type="number" 
                     min="1" 
                     max="12" 
                     value={hoursPerDay} 
                     onChange={(e) => setHoursPerDay(parseInt(e.target.value) || 1)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 font-mono"
+                    className={`w-full border rounded px-3 py-2 text-xs font-mono outline-none ${
+                      appTheme === 'light' ? 'border-slate-250 text-slate-800 bg-slate-50' : 'border-slate-850 text-slate-200 bg-transparent'
+                    }`}
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={plannerLoading}
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded shadow flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                {plannerLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Compiling Study Plan...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 animate-pulse" /> Construct Study Syllabus
-                  </>
-                )}
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="submit"
+                  disabled={plannerLoading}
+                  className="w-full py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-xs rounded-xl shadow cursor-pointer flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 inline-block leading-none"
+                >
+                  {plannerLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> 
+                      <span>{lang === 'en' ? 'Compiling syllabus...' : 'بناء الخطة والمقرر...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 animate-pulse" /> 
+                      <span>{lang === 'en' ? 'Construct syllabus map' : 'هيكلة وتوليد الخطة الدراسية بالـ AI'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
+            {plannerError && <p className="text-[10px] text-rose-500 font-bold mt-2 font-mono">{plannerError}</p>}
           </div>
 
           <AnimatePresence>
@@ -444,48 +525,54 @@ export default function CoachTab({
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-6 select-text"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-6 select-text text-left"
               >
                 {/* Result Tasks details */}
-                <div className="lg:col-span-8 bg-slate-900/20 p-6 rounded-3xl border border-slate-850 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
-                      <BookOpen className="w-4.5 h-4.5 text-cyan-400" /> Formulated Syllabus milestones
+                <div className={`p-5 sm:p-6 rounded-2xl border lg:col-span-8 space-y-4 ${cardBgClass}`}>
+                  <div className="flex justify-between items-center border-b border-dashed border-slate-500/10 pb-3 flex-wrap gap-2">
+                    <h4 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${textTitleClass}`}>
+                      <BookOpen className="w-4.5 h-4.5 text-cyan-500" /> 
+                      <span>{lang === 'en' ? 'Formulated syllabus intervals' : 'الفترات والمواضيع الدراسية المقترحة'}</span>
                     </h4>
                     
                     {!planImported ? (
                       <button
                         onClick={handleExecutePlanImport}
-                        className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 font-bold text-xs text-slate-950 flex items-center gap-1.5 transition-colors"
+                        className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs cursor-pointer transition-all leading-none inline-block"
                       >
-                        <CalendarDays className="w-3.5 h-3.5" /> Schedule Plan Directly
+                        {lang === 'en' ? 'Schedule schedule directly' : 'إدراج الخطة فورًا وجدولتها'}
                       </button>
                     ) : (
-                      <span className="px-3 py-1 bg-slate-900 text-emerald-400 font-bold font-mono text-[10px] rounded border border-emerald-500/10">
-                        ✔️ ACTIVE IN CALENDAR & TASKS
+                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 font-bold font-mono text-[9px] rounded border border-emerald-500/20 uppercase tracking-widest leading-none">
+                        ✔️ {lang === 'en' ? 'ACTIVE' : 'مُدرَجة ونشطة'}
                       </span>
                     )}
                   </div>
 
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-none">
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-none">
                     {generatedPlan.tasks.map((pt, idx) => (
-                      <div key={idx} className="p-4 bg-slate-950/40 border border-slate-900 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 text-[8px] font-mono leading-none tracking-wider font-semibold block w-max">
-                            DAY OFFSET: DAY {pt.dayOffset}
+                      <div key={idx} className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        appTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/40 border-slate-900'
+                      }`}>
+                        <div className="space-y-1 flex-1">
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 text-[8px] font-mono font-extrabold uppercase inline-block leading-none">
+                            {lang === 'en' ? 'DAY OFFSET: DAY' : 'فارق النشوء: اليوم'} {pt.dayOffset}
                           </span>
-                          <h5 className="text-xs font-bold text-white">{pt.title}</h5>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {(pt.subtasks || []).map((sub: string, sIdx: number) => (
-                              <span key={sIdx} className="px-1.5 py-0.5 bg-slate-900 text-[8px] text-slate-400 rounded">
-                                • {sub}
-                              </span>
-                            ))}
-                          </div>
+                          <h5 className={`text-xs font-semibold ${textTitleClass}`}>{pt.title}</h5>
+                          {pt.subtasks && pt.subtasks.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {pt.subtasks.map((sub: string, sIdx: number) => (
+                                <span key={sIdx} className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-900 text-[8px] text-slate-500 rounded font-light block leading-none">
+                                  • {sub}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
-                        <div className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
-                          <Clock className="w-3.5 h-3.5 text-slate-600" /> {pt.durationMinutes}m duration
+                        <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-500 leading-none shrink-0">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" /> 
+                          <span>{pt.durationMinutes} {lang === 'en' ? 'mins' : 'دقيقة'}</span>
                         </div>
                       </div>
                     ))}
@@ -493,11 +580,12 @@ export default function CoachTab({
                 </div>
 
                 {/* Advice summary */}
-                <div className="lg:col-span-4 bg-slate-900/40 p-6 rounded-3xl border border-white/5 space-y-4 height-max">
-                  <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <Activity className="w-4.5 h-4.5" /> Exam Pass Strategy
+                <div className={`p-5 sm:p-6 rounded-2xl border lg:col-span-4 space-y-4 ${cardBgClass}`}>
+                  <h4 className="text-xs font-semibold text-indigo-550 dark:text-indigo-400 uppercase tracking-wider font-mono flex items-center gap-1">
+                    <Sparkles className="w-4 h-4 text-cyan-500" /> 
+                    <span>{lang === 'en' ? 'Exam Success Strategy' : 'نصائح هامة لاكتساح المواد'}</span>
                   </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed font-light select-text">
+                  <p className={`text-xs leading-relaxed font-light ${textMutedClass}`}>
                     {generatedPlan.advice}
                   </p>
                 </div>
@@ -509,19 +597,28 @@ export default function CoachTab({
 
       {/* SUB-TAB 3: SCHEDULE OPTIMIZER */}
       {activeSubTab === 'optimizer' && (
-        <div className="bg-slate-900/40 p-6 rounded-3xl border border-white/5 space-y-4">
-          <div className="text-center py-6 select-text max-w-sm mx-auto space-y-3">
-            <h4 className="text-lg font-bold text-white font-sans">Sequence Algorithmic optimizer</h4>
-            <p className="text-xs text-slate-400 leading-relaxed font-light">
-              Reorders your active tasks list based on strict priority factors, estimated Pomodoro times, focus histories, and upcoming deadlines automatically.
+        <div className={`p-6 sm:p-8 rounded-3xl border ${cardBgClass}`}>
+          <div className="text-center select-text max-w-sm mx-auto space-y-3.5">
+            <h4 className={`text-base sm:text-lg font-bold font-sans ${textTitleClass}`}>
+              {lang === 'en' ? 'Dynamic prioritizer sequence matrix' : 'منظومة إعادة هيكلة وتسلسل المهام'}
+            </h4>
+            <p className={`text-xs font-light leading-relaxed ${textMutedClass}`}>
+              {lang === 'en' 
+                ? 'Rearranges study tasks systematically. Evaluates estimated focus sessions, deadline proximity, and pending project items automatically with AI.' 
+                : 'يقوم الذكاء الاصطناعي بفرز وإعادة ترتيب كافة المهام قيد الانتظار استقصاءً لمقررات الامتحان، وتاريخ التسليم المقرب لبسط سيادتك الزمنية.'}
             </p>
             <button
               onClick={handleRunOptimizer}
-              disabled={optimizeLoading}
-              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold text-xs rounded-full shadow-lg shadow-cyan-500/10 active:scale-95 transition-all text-center"
+              disabled={optimizeLoading || tasks.filter(t => !t.completed).length === 0}
+              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-xs rounded-xl shadow cursor-pointer hover:opacity-90 active:scale-95 transition-all inline-block leading-none"
             >
-              {optimizeLoading ? 'Running algorithm...' : 'Rearrange with AI'}
+              {optimizeLoading ? (lang === 'en' ? 'Running heuristics...' : 'تشغيل خوارزميات الفرز...') : (lang === 'en' ? 'Rearrange syllabus with AI' : 'تحسين ترتيب القائمة فورًا بالـ AI')}
             </button>
+            {tasks.filter(t => !t.completed).length === 0 && (
+              <p className="text-[9px] text-slate-500 font-mono select-none">
+                {lang === 'en' ? 'No pending tasks found to optimize.' : 'يرجى إدراج بعض المهام في قائمة المهام أولاً للفحص.'}
+              </p>
+            )}
           </div>
 
           <AnimatePresence>
@@ -529,12 +626,15 @@ export default function CoachTab({
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-5 bg-slate-950/60 rounded-2xl border border-slate-900 space-y-2 select-text"
+                className={`p-5 rounded-2xl border mt-5 select-text ${
+                  appTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/60 border-slate-900'
+                }`}
               >
-                <h5 className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> Optimization Report Generated
+                <h5 className={`text-xs font-bold flex items-center gap-1.5 font-mono mb-2 ${textTitleClass}`}>
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-500 animate-pulse" /> 
+                  <span>{lang === 'en' ? 'Optimized Study Strategy' : 'تقرير دمج وصياغة تسلسل المهام'}</span>
                 </h5>
-                <p className="text-xs text-slate-300 leading-relaxed font-light">
+                <p className={`text-xs leading-relaxed font-light ${textMutedClass}`}>
                   {optimizeResult}
                 </p>
               </motion.div>

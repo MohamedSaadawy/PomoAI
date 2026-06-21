@@ -9,21 +9,21 @@ import {
   Bell, 
   Maximize2, 
   Minimize2, 
-  CheckSquare, 
-  Sparkles, 
   TreePine, 
-  HelpCircle,
-  VolumeX,
+  VolumeX, 
   Volume
 } from 'lucide-react';
 import { Task, TreeType } from '../types';
 import { AUDIO_ALARMS } from '../utils/presets';
+import { translations } from '../utils/translations';
 
 interface WorkTimerProps {
   activeTask: Task | null;
   onSessionComplete: (durationMinutes: number, workedTaskId?: string, treeSprouted?: TreeType) => void;
   onInterruptionLogged: () => void;
   onCompleteTask: (id: string) => void;
+  lang: 'en' | 'ar';
+  appTheme: 'dark' | 'light';
 }
 
 export default function WorkTimer({
@@ -31,7 +31,12 @@ export default function WorkTimer({
   onSessionComplete,
   onInterruptionLogged,
   onCompleteTask,
+  lang,
+  appTheme
 }: WorkTimerProps) {
+  const t = translations[lang];
+  const isRtl = lang === 'ar';
+
   // Preset States
   const [sessionLength, setSessionLength] = useState(25); // minutes
   const [breakLength, setBreakLength] = useState(5); // minutes
@@ -57,7 +62,7 @@ export default function WorkTimer({
       try {
         const audio = new Audio(soundObj.url);
         audio.volume = soundVolume;
-        audio.play().catch(e => console.log("Audio play blocked by browser sandbox until click:", e));
+        audio.play().catch(e => console.log("Audio play blocked until click interaction", e));
       } catch (err) {
         console.error("Audio playback error:", err);
       }
@@ -82,7 +87,7 @@ export default function WorkTimer({
 
   const dispatchNotification = (title: string, body: string) => {
     if (hasNotificationPermission && 'Notification' in window) {
-      new Notification(title, { body, icon: '/favicon.ico' });
+      new Notification(title, { body });
     }
   };
 
@@ -94,7 +99,6 @@ export default function WorkTimer({
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            // Completed! Triggers callback
             clearInterval(intervalRef.current!);
             setIsRunning(false);
             handleCycleFinished();
@@ -118,7 +122,12 @@ export default function WorkTimer({
     
     if (!isBreak) {
       // Completed Focus Session!
-      dispatchNotification("Pomodoro session finalized!", `Sensational work studying. Sprouts 1 ${selectedTreeType} tree!`);
+      dispatchNotification(
+        lang === 'en' ? "Pomodoro session finalized!" : "اكتملت دورة التركيز بومودورو!", 
+        lang === 'en' 
+          ? `Sensational work studying. Sprouts 1 ${selectedTreeType} tree!`
+          : `عمل مذهل وبديع. تم زراعة شجرة ${selectedTreeType} في غابتك!`
+      );
       // Trigger global state callback
       onSessionComplete(sessionLength, activeTask?.id, selectedTreeType);
       
@@ -131,7 +140,10 @@ export default function WorkTimer({
       }
     } else {
       // Completed break!
-      dispatchNotification("Break finished!", "Time to return to deep flow state. Good luck!");
+      dispatchNotification(
+        lang === 'en' ? "Break finished!" : "انتهت فترة الاستراحة!", 
+        lang === 'en' ? "Time to return to deep flow state. Good luck!" : "حان الوقت للعودة إلى ذروة التركيز. بالتوفيق!"
+      );
       setIsBreak(false);
       setTimeLeft(sessionLength * 60);
       if (autoSession) setIsRunning(true);
@@ -141,7 +153,6 @@ export default function WorkTimer({
   // Pause tracking logs interruptions
   const toggleTimer = () => {
     if (isRunning) {
-      // Log interruption count 
       onInterruptionLogged();
     }
     setIsRunning(!isRunning);
@@ -158,18 +169,18 @@ export default function WorkTimer({
     handleCycleFinished();
   };
 
-  // Update timeLeft when session/break lengths are slider-modified or edited
+  // Update timeLeft when sliders are customized
   useEffect(() => {
     if (!isRunning) {
       setTimeLeft(isBreak ? breakLength * 60 : sessionLength * 60);
     }
   }, [sessionLength, breakLength, isBreak]);
 
-  // Listen to keyboard hotkeys
+  // Keyboard hotkeys listening
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return; // ignore in form fields
+        return;
       }
       
       const key = e.key.toLowerCase();
@@ -189,7 +200,6 @@ export default function WorkTimer({
     return () => window.removeEventListener('keydown', handleKeys);
   }, [isRunning, isBreak, selectedTreeType, timeLeft, sessionLength, breakLength]);
 
-  // Format YYYY-MM-DD helper for circular stroke percentage
   const totalDurationSeconds = isBreak ? breakLength * 60 : sessionLength * 60;
   const percentage = totalDurationSeconds > 0 ? (timeLeft / totalDurationSeconds) : 0;
   const strokeDashoffset = 2 * Math.PI * 90 * (1 - percentage);
@@ -201,35 +211,64 @@ export default function WorkTimer({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // CSS Styles
+  const cardBgClass = appTheme === 'light' 
+    ? 'bg-white border-slate-200 text-slate-800' 
+    : 'bg-[#0b0f19]/60 border-white/5 text-slate-100';
+
+  const widgetBgClass = appTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/30 border-white/5';
+  const textTitleClass = appTheme === 'light' ? 'text-slate-900' : 'text-white';
+  const textMutedClass = appTheme === 'light' ? 'text-slate-500' : 'text-slate-400';
+
   return (
     <div 
       id="timer-view-root"
-      className={`relative rounded-3xl border border-white/5 overflow-hidden transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-[#070a13] flex flex-col items-center justify-center border-none rounded-none' : 'bg-slate-900/40 p-6 sm:p-8'}`}
+      dir={isRtl ? 'rtl' : 'ltr'}
+      className={`relative rounded-3xl border transition-all duration-300 ${
+        isFullscreen 
+          ? `fixed inset-0 z-50 flex flex-col items-center justify-center border-none rounded-none ${appTheme === 'light' ? 'bg-slate-50' : 'bg-[#070a13]'}` 
+          : `${cardBgClass} p-6 sm:p-8`
+      }`}
     >
       {/* Top action row */}
-      <div className={`w-full flex items-center justify-between ${isFullscreen ? 'absolute top-6 left-0 px-8' : 'border-b border-white/5 pb-4 mb-8'}`}>
+      <div className={`w-full flex items-center justify-between ${isFullscreen ? 'absolute top-6 left-0 px-8' : 'border-b border-dashed border-slate-700/20 pb-4 mb-8'}`}>
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">
-            {isBreak ? 'Ambient recovery block' : 'Active Flow Session'}
-          </span>
+          {!isBreak ? (
+            <>
+              <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+              <span className="text-xs font-mono text-cyan-500 uppercase tracking-wider font-bold">
+                {lang === 'en' ? 'Active Focus Period' : 'فترة التركيز النشطة'}
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              <span className="text-xs font-mono text-indigo-500 uppercase tracking-wider font-bold">
+                {lang === 'en' ? 'Recovery Break Period' : 'فترة الاستراحة والاستشفاء'}
+              </span>
+            </>
+          )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Shortcuts Overlay Button */}
           <button
             onClick={() => setShowShortcutsHelp(!showShortcutsHelp)}
-            className="p-2 rounded-xl bg-slate-800/60 border border-white/5 cursor-pointer hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className={`px-3 py-1.5 rounded-xl border text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-colors ${
+              appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200' : 'bg-slate-800/60 border-white/5 text-slate-400 hover:text-white'
+            }`}
             title="Keyboard Shortcuts"
           >
-            <span className="text-[10px] font-mono px-1">K</span> Keyboard
+            <span>{lang === 'en' ? 'Keyboard' : 'لوحة المفاتيح'}</span>
           </button>
 
           {/* Fullscreen Option */}
           <button
             id="btn-timer-fullscreen"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 rounded-xl bg-slate-800/60 border border-white/5 cursor-pointer hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className={`p-2 rounded-xl border cursor-pointer transition-colors ${
+              appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200' : 'bg-slate-800/60 border-white/5 text-slate-400 hover:text-white'
+            }`}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -237,17 +276,19 @@ export default function WorkTimer({
       </div>
 
       {showShortcutsHelp && (
-        <div className="absolute top-16 right-6 p-4 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-30 space-y-2 text-xs font-mono text-slate-300 max-w-xs">
-          <h5 className="font-bold text-white mb-2 font-sans">Quick Keys:</h5>
-          <div className="flex justify-between"><span>[Space]</span> <span className="text-cyan-400 text-right">Play / Pause</span></div>
-          <div className="flex justify-between"><span>[R]</span> <span className="text-cyan-400 text-right">Reset clock</span></div>
-          <div className="flex justify-between"><span>[S]</span> <span className="text-pink-400 text-right">Skip block</span></div>
-          <div className="flex justify-between"><span>[F]</span> <span className="text-cyan-400 text-right">Fullscreen toggle</span></div>
+        <div className={`absolute top-16 ${isRtl ? 'left-6' : 'right-6'} p-4 border rounded-2xl shadow-2xl z-30 space-y-2 text-xs font-mono max-w-xs ${
+          appTheme === 'light' ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-900 border-slate-800 text-slate-300'
+        }`}>
+          <h5 className={`font-bold mb-1.5 font-sans ${textTitleClass}`}>{lang === 'en' ? 'Hotkeys:' : 'مفاتيح سريعة:'}</h5>
+          <div className="flex justify-between border-b border-slate-500/10 py-1"><span>[Space]</span> <span className="text-cyan-500 text-right">{lang === 'en' ? 'Start / Pause' : 'بدء / إيقاف مؤقت'}</span></div>
+          <div className="flex justify-between border-b border-slate-500/10 py-1"><span>[R]</span> <span className="text-cyan-500 text-right">{lang === 'en' ? 'Reset Clock' : 'إعادة ضبط'}</span></div>
+          <div className="flex justify-between border-b border-slate-500/10 py-1"><span>[S]</span> <span className="text-pink-500 text-right">{lang === 'en' ? 'Skip block' : 'تخطي الاستراحة/الدورة'}</span></div>
+          <div className="flex justify-between py-1"><span>[F]</span> <span className="text-cyan-500 text-right">{lang === 'en' ? 'Fullscreen' : 'النمط الكامل'}</span></div>
           <button 
             onClick={() => setShowShortcutsHelp(false)}
-            className="mt-3 w-full py-1 bg-white/5 rounded text-center text-[10px] uppercase font-bold hover:bg-white/10"
+            className="mt-3 w-full py-1.5 bg-cyan-500 text-white rounded-lg text-center text-[10px] uppercase font-bold hover:bg-cyan-600 cursor-pointer"
           >
-            Close
+            {lang === 'en' ? 'Close' : 'إغلاق'}
           </button>
         </div>
       )}
@@ -255,17 +296,19 @@ export default function WorkTimer({
       {/* Main Container */}
       <div className="flex flex-col lg:flex-row items-center justify-center gap-12 max-w-4xl mx-auto py-4">
         
-        {/* Left Column: Preset controls (Only show when not in fullscreen mode to remove clutter) */}
+        {/* Left Column: Preset controls (Only show when not in fullscreen mode) */}
         {!isFullscreen && (
           <div className="space-y-6 w-full lg:w-72 shrink-0">
             {/* Session Preset sliders */}
-            <div className="space-y-4 bg-slate-950/30 p-5 rounded-2xl border border-white/5">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Timer adjustments</h4>
+            <div className={`p-5 rounded-2xl border ${widgetBgClass} space-y-4`}>
+              <h4 className={`text-xs font-bold uppercase tracking-wider font-mono ${textTitleClass}`}>
+                {lang === 'en' ? 'Timer calibration' : 'معايرة المدة الزمنية'}
+              </h4>
               
               <div className="space-y-2">
-                <div className="flex justify-between text-xs text-slate-400 font-light">
-                  <span>Focus Block:</span>
-                  <span className="font-bold text-white font-mono">{sessionLength} min</span>
+                <div className="flex justify-between text-xs font-light">
+                  <span className={textMutedClass}>{lang === 'en' ? 'Focus Duration:' : 'فترة التركيز:'}</span>
+                  <span className={`font-bold font-mono ${textTitleClass}`}>{sessionLength} {lang === 'en' ? 'min' : 'دقيقة'}</span>
                 </div>
                 <input 
                   type="range" 
@@ -275,14 +318,14 @@ export default function WorkTimer({
                   value={sessionLength} 
                   disabled={isRunning}
                   onChange={(e) => setSessionLength(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                 />
               </div>
 
               <div className="space-y-2 pb-2">
-                <div className="flex justify-between text-xs text-slate-400 font-light">
-                  <span>Break Period:</span>
-                  <span className="font-bold text-white font-mono">{breakLength} min</span>
+                <div className="flex justify-between text-xs font-light">
+                  <span className={textMutedClass}>{lang === 'en' ? 'Break Duration:' : 'فترة الاستراحة:'}</span>
+                  <span className={`font-bold font-mono ${textTitleClass}`}>{breakLength} {lang === 'en' ? 'min' : 'دقيقة'}</span>
                 </div>
                 <input 
                   type="range" 
@@ -292,58 +335,64 @@ export default function WorkTimer({
                   value={breakLength} 
                   disabled={isRunning}
                   onChange={(e) => setBreakLength(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-400"
+                  className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                 />
               </div>
 
               {/* Automatic sequences */}
-              <div className="space-y-3 pt-2 border-t border-white/5 text-xs text-slate-300">
-                <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+              <div className="space-y-3 pt-3 border-t border-dashed border-slate-700/20 text-xs">
+                <label className={`flex items-center gap-2 cursor-pointer transition-colors ${textMutedClass} hover:text-cyan-500`}>
                   <input 
                     type="checkbox" 
                     checked={autoBreak} 
                     onChange={() => setAutoBreak(!autoBreak)}
-                    className="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-opacity-0 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-300 dark:border-slate-700 bg-transparent text-cyan-500 focus:ring-opacity-0 focus:ring-0 cursor-pointer"
                   />
-                  <span>Launch break automatic</span>
+                  <span>{lang === 'en' ? 'Start break automatically' : 'بدء الاستراحة تلقائيًا'}</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+                <label className={`flex items-center gap-2 cursor-pointer transition-colors ${textMutedClass} hover:text-indigo-500`}>
                   <input 
                     type="checkbox" 
                     checked={autoSession} 
                     onChange={() => setAutoSession(!autoSession)}
-                    className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-opacity-0 focus:ring-0 cursor-pointer"
+                    className="rounded border-slate-300 dark:border-slate-700 bg-transparent text-indigo-500 focus:ring-opacity-0 focus:ring-0 cursor-pointer"
                   />
-                  <span>Launch countdown consecutive</span>
+                  <span>{lang === 'en' ? 'Start next session automatically' : 'تكرار الدورات تلقائيًا'}</span>
                 </label>
               </div>
             </div>
 
             {/* Tree species chooser */}
-            <div className="p-4 bg-slate-950/30 border border-white/5 rounded-2xl space-y-3">
-              <h5 className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
-                <TreePine className="w-4 h-4 text-emerald-400" /> Plant Selection
+            <div className={`p-4 border rounded-2xl space-y-3 ${widgetBgClass}`}>
+              <h5 className={`text-xs font-bold flex items-center gap-1.5 font-mono ${textTitleClass}`}>
+                <TreePine className="w-4 h-4 text-emerald-500" /> 
+                <span>{lang === 'en' ? 'Sprouter Seed Selection' : 'فصيل البذرة المزرعة'}</span>
               </h5>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 {['sakura', 'pine', 'oak', 'maple', 'golden'].map((tree) => (
                   <button
                     key={tree}
                     onClick={() => setSelectedTreeType(tree as TreeType)}
-                    className={`px-2.5 py-1.5 rounded-lg border text-center uppercase tracking-wider font-mono transition-all ${selectedTreeType === tree ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-bold' : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800'}`}
+                    className={`px-2 py-1.5 rounded-lg border text-center uppercase tracking-wider font-mono transition-all cursor-pointer ${
+                      selectedTreeType === tree 
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold' 
+                        : 'bg-[#0b0f19]/30 border-slate-200 dark:border-white/5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
                   >
                     {tree}
                   </button>
                 ))}
               </div>
-              <p className="text-[9px] text-slate-500 font-light italic text-center">Sprouts instantly inside Pomo Forest upon timer finalization.</p>
+              <p className="text-[9px] text-slate-500 font-light italic text-center">
+                {lang === 'en' ? 'Sprouts automatically inside Forest upon timer expiry.' : 'ستنمو كشجرة جديدة بغابتك عند انقضاء مدة المؤقت.'}
+              </p>
             </div>
           </div>
         )}
 
         {/* Central Circular Stage */}
         <div className="flex-1 flex flex-col items-center justify-center py-4">
-          
-          <div className="relative w-80 h-80 flex items-center justify-center">
+          <div className="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center">
             {/* Animated Pulsing Halo under active loading */}
             <AnimatePresence>
               {isRunning && (
@@ -364,7 +413,7 @@ export default function WorkTimer({
                 cy="100" 
                 r="90" 
                 fill="transparent" 
-                className="stroke-slate-800" 
+                className={appTheme === 'light' ? 'stroke-slate-200' : 'stroke-slate-800'} 
                 strokeWidth="4" 
               />
               <motion.circle 
@@ -372,7 +421,7 @@ export default function WorkTimer({
                 cy="100" 
                 r="90" 
                 fill="transparent" 
-                className={isBreak ? "stroke-indigo-400" : "stroke-cyan-400"}
+                className={isBreak ? "stroke-indigo-400" : "stroke-cyan-500"}
                 strokeWidth="5" 
                 strokeDasharray={2 * Math.PI * 90}
                 animate={{ strokeDashoffset }}
@@ -383,28 +432,34 @@ export default function WorkTimer({
 
             {/* Inside Time Displays */}
             <div className="absolute inset-0 flex flex-col items-center justify-center space-y-1">
-              <span className={`text-[10px] font-mono tracking-widest uppercase ${isBreak ? 'text-indigo-400 font-semibold' : 'text-cyan-400 font-bold'}`}>
-                {isBreak ? 'Recovery' : 'Deep Focus'}
+              <span className={`text-[10px] font-mono tracking-widest uppercase ${isBreak ? 'text-indigo-500 font-semibold' : 'text-cyan-500 font-bold'}`}>
+                {isBreak ? (lang === 'en' ? 'Recovery' : 'استرخاء واستراحة') : (lang === 'en' ? 'Deep Focus' : 'مرحلة التركيز')}
               </span>
-              <h3 className="text-5xl font-extrabold font-mono text-white tracking-tighter select-text">
+              <h3 className={`text-4xl sm:text-5xl font-extrabold font-mono tracking-tighter select-text ${textTitleClass}`}>
                 {formatTime(timeLeft)}
               </h3>
               {activeTask ? (
                 <div className="max-w-[190px] text-center select-text">
-                  <p className="text-[10px] text-slate-400 truncate mt-1">🎯 {activeTask.title}</p>
+                  <p className="text-[10px] text-slate-500 truncate mt-1">🎯 {activeTask.title}</p>
                 </div>
               ) : (
-                <span className="text-[9px] text-slate-500 uppercase tracking-widest leading-none">Awaiting Spotlight</span>
+                <span className="text-[9px] text-slate-500 uppercase tracking-widest leading-none mt-1">
+                  {lang === 'en' ? 'Awaiting Target' : 'بانتظار تحديد هدف'}
+                </span>
               )}
             </div>
           </div>
 
           {/* Controls Toggles */}
-          <div className="flex items-center gap-4 mt-8 bg-slate-950/25 p-3 px-6 rounded-full border border-white/5 shadow-xl">
+          <div className={`flex items-center gap-4 mt-8 p-2.5 px-5 rounded-full border shadow-md ${
+            appTheme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-950/25 border-white/5'
+          }`}>
             <button
               onClick={() => resetTimer()}
-              className="p-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/5 hover:text-white text-slate-400 transition-colors"
-              title="Reset Timer Cycle"
+              className={`p-3 rounded-full border cursor-pointer transition-colors ${
+                appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-600 hover:text-slate-950' : 'bg-white/5 border-white/5 text-slate-400 hover:text-white'
+              }`}
+              title="Reset Timer"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -412,15 +467,19 @@ export default function WorkTimer({
             <button
               id="btn-timer-play"
               onClick={toggleTimer}
-              className={`p-5 rounded-full transition-all shadow-lg shadow-cyan-500/10 ${isRunning ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white hover:from-cyan-400'}`}
-              title={isRunning ? 'Pause Loop' : 'Execute Focus Countdown'}
+              className={`p-4 hover:scale-105 rounded-full transition-all shadow-md text-white cursor-pointer ${
+                isRunning ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gradient-to-r from-cyan-500 to-indigo-600'
+              }`}
+              title={isRunning ? 'Pause' : 'Start'}
             >
-              {isRunning ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 fill-white" />}
+              {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white" />}
             </button>
 
             <button
               onClick={skipTimer}
-              className="p-3 bg-white/5 hover:bg-white/10 rounded-full border border-white/5 hover:text-pink-400 text-slate-400 transition-colors"
+              className={`p-3 rounded-full border cursor-pointer transition-colors ${
+                appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-600 hover:text-rose-600' : 'bg-white/5 border-white/5 text-slate-400 hover:text-pink-400'
+              }`}
               title="Skip Session Cycle"
             >
               <SkipForward className="w-4 h-4" />
@@ -428,16 +487,17 @@ export default function WorkTimer({
           </div>
         </div>
 
-        {/* Right Column: Audio settings / Notification permission trigger (Hidden in fullscreen) */}
+        {/* Right Column: Audio settings / Notification permissions (Hidden in fullscreen) */}
         {!isFullscreen && (
           <div className="space-y-6 w-full lg:w-72 shrink-0">
             {/* Alarm selector */}
-            <div className="p-5 bg-slate-950/30 border border-white/5 rounded-2xl space-y-4">
-              <h4 className="text-xs font-bold text-white flex items-center gap-1.5 font-mono">
-                <Volume2 className="w-4 h-4 text-cyan-400" /> Sound Alarm Sound
+            <div className={`p-4 border rounded-2xl space-y-3 ${widgetBgClass}`}>
+              <h4 className={`text-xs font-bold flex items-center gap-1.5 font-mono ${textTitleClass}`}>
+                <Volume2 className="w-4 h-4 text-cyan-500" /> 
+                <span>{lang === 'en' ? 'Chimes & Alarm Audio' : 'نغمة انتهاء المؤقت'}</span>
               </h4>
               
-              <div className="space-y-1.5 text-xs">
+              <div className="space-y-1 text-xs">
                 {AUDIO_ALARMS.map((alarm) => (
                   <button
                     key={alarm.id}
@@ -445,22 +505,26 @@ export default function WorkTimer({
                       setActiveAlarm(alarm.id);
                       playAlarmSound(alarm.id);
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-xl border flex items-center justify-between transition-colors ${activeAlarm === alarm.id ? 'bg-[#0f1d32] border-cyan-500/30 text-white font-semibold' : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800'}`}
+                    className={`w-full text-left px-3 py-1.5 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                      activeAlarm === alarm.id 
+                        ? 'bg-[#0f1d32]/10 border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold' 
+                        : 'bg-[#0b0f19]/30 border-slate-200 dark:border-white/5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
                   >
                     <span>{alarm.name}</span>
-                    <Play className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100" />
+                    <Play className="w-2.5 h-2.5 opacity-40" />
                   </button>
                 ))}
               </div>
 
               {/* Volume scale config */}
-              <div className="space-y-2 pt-2 border-t border-white/5">
+              <div className="space-y-2 pt-2 border-t border-dashed border-slate-700/20">
                 <div className="flex justify-between items-center text-[10px] text-slate-500">
-                  <span>Sound volume</span>
+                  <span>{lang === 'en' ? 'Volume strength' : 'مستوى الصوت'}</span>
                   <span>{Math.round(soundVolume * 100)}%</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <VolumeX className="w-3.5 h-3.5 text-slate-600" />
+                  <VolumeX className="w-3.5 h-3.5 text-slate-400" />
                   <input 
                     type="range" 
                     min="0" 
@@ -468,7 +532,7 @@ export default function WorkTimer({
                     step="0.1" 
                     value={soundVolume}
                     onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
-                    className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    className="flex-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                   />
                   <Volume className="w-3.5 h-3.5 text-slate-400" />
                 </div>
@@ -476,23 +540,25 @@ export default function WorkTimer({
             </div>
 
             {/* Notifications configuration */}
-            <div className="p-4 bg-slate-100/5 hover:bg-slate-100/10 border border-white/5 rounded-2xl transition-all">
+            <div className={`p-4 border rounded-2xl transition-all ${widgetBgClass}`}>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-400 shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-500 shrink-0">
                   <Bell className="w-4 h-4" />
                 </div>
-                <div className="space-y-1">
-                  <h5 className="text-xs font-bold text-white">Browser Notifications</h5>
-                  <p className="text-[10px] text-slate-400 font-light leading-normal">Permit sound bells when countdown sessions finalize.</p>
+                <div className="space-y-0.5">
+                  <h5 className={`text-xs font-bold ${textTitleClass}`}>{lang === 'en' ? 'System Alerts' : 'تنبيهات النظام'}</h5>
+                  <p className="text-[10px] text-slate-500 font-light leading-snug">
+                    {lang === 'en' ? 'Alert sound chimes' : 'تنبيهات المتصفح الصوتية فور انتهاء الوقت.'}
+                  </p>
                   
                   {hasNotificationPermission ? (
-                    <span className="text-[10px] text-emerald-400 font-bold font-mono">✔️ Active Permissions</span>
+                    <span className="text-[9px] text-emerald-500 font-bold font-mono">✔️ {lang === 'en' ? 'Active Alerts' : 'منشطة ومفعَّلة'}</span>
                   ) : (
                     <button
                       onClick={requestNotificationPermission}
-                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider block mt-1 hover:underline"
+                      className="text-[9px] text-indigo-500 hover:underline font-bold uppercase tracking-wider block mt-1 cursor-pointer"
                     >
-                      Authorize Permission
+                      {lang === 'en' ? 'Authorize' : 'تفعيل الإذن'}
                     </button>
                   )}
                 </div>

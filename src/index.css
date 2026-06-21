@@ -4,6 +4,32 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom vibrant Mint Green overrides for Cyan colors */
+  --color-cyan-50: #f0fdf6;
+  --color-cyan-100: #dcfde9;
+  --color-cyan-200: #bbfed2;
+  --color-cyan-300: #86f3b0;
+  --color-cyan-400: #3ee68b; /* Radiant neon mint */
+  --color-cyan-500: #10d070; /* Vibrant primary mint green */
+  --color-cyan-505: #10d070;
+  --color-cyan-600: #05a353; /* Deep mint */
+  --color-cyan-700: #047d40;
+  --color-cyan-800: #076234;
+  --color-cyan-900: #07502c;
+  --color-cyan-950: #022d17;
+
+  /* Custom high-end Forest Teal overrides for Indigo colors to make gradient transitions beautiful */
+  --color-indigo-50: #f0fdfa;
+  --color-indigo-100: #ccfbf1;
+  --color-indigo-200: #99f6e4;
+  --color-indigo-300: #5eead4;
+  --color-indigo-400: #2dd4bf;
+  --color-indigo-500: #14b8a6;
+  --color-indigo-600: #0d9488;
+  --color-indigo-700: #0f766e;
+  --color-indigo-800: #115e59;
+  --color-indigo-900: #134e4a;
 }
 
 @layer base {

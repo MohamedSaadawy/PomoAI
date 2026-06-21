@@ -526,8 +526,8 @@ export default function App() {
     : 'bg-[#070a13] text-slate-100';
 
   const sidebarBgClass = appTheme === 'light'
-    ? 'bg-white border-r border-slate-205 text-slate-800'
-    : 'bg-[#05080f] border-r border-white/5 text-slate-100';
+    ? `bg-white ${lang === 'ar' ? 'border-l' : 'border-r'} border-slate-205 text-slate-800`
+    : `bg-[#05080f] ${lang === 'ar' ? 'border-l' : 'border-r'} border-white/5 text-slate-100`;
 
   const headerBgClass = appTheme === 'light'
     ? 'bg-white border-b border-slate-205 text-slate-850'
@@ -551,37 +551,37 @@ export default function App() {
       <aside 
         id="applet-sidebar"
         className={`fixed inset-y-0 ${lang === 'ar' ? 'right-0' : 'left-0'} lg:static flex flex-col justify-between transition-all duration-300 z-50 shrink-0 ${
-          sidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0'
+          sidebarOpen ? 'w-64 translate-x-0' : `w-20 ${lang === 'ar' ? 'translate-x-full' : '-translate-x-full'} lg:translate-x-0`
         } ${sidebarBgClass}`}
       >
         <div className="py-6 flex-1 flex flex-col justify-between overflow-y-auto">
           <div>
             {/* Sidebar Logo */}
-            <div className={`px-6 pb-6 border-b flex items-center justify-between ${appTheme === 'light' ? 'border-slate-100' : 'border-white/5'}`}>
+            <div className={`pb-6 border-b flex items-center justify-between ${appTheme === 'light' ? 'border-slate-100' : 'border-white/5'} ${sidebarOpen ? 'px-6' : 'px-0 justify-center'}`}>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center p-[1px]">
-                  <div className={`w-full h-full rounded-[7px] flex items-center justify-center ${appTheme === 'light' ? 'bg-white' : 'bg-[#05080f]'}`}>
-                    <Zap className="w-4 h-4 text-cyan-505" />
-                  </div>
+                <div className="w-9 h-9 bg-gradient-to-tr from-cyan-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shrink-0">
+                  <Zap className="w-5 h-5 text-white" />
                 </div>
                 {sidebarOpen && (
                   <div>
-                    <h1 className={`text-sm font-extrabold tracking-tight leading-tight ${textTitleClass}`}>POMO OS</h1>
-                    <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest block font-bold">Workspace v1.2</span>
+                    <h1 className="text-sm font-extrabold tracking-tight bg-gradient-to-r from-cyan-500 to-indigo-500 bg-clip-text text-transparent leading-tight">{t.logoText || 'FOCUS RUN'}</h1>
+                    <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest block font-bold">{t.pomoOsTag || 'Workspace v1.2'}</span>
                   </div>
                 )}
               </div>
               
-              <button 
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`p-1 rounded cursor-pointer lg:hidden border ${
-                  appTheme === 'light' 
-                    ? 'bg-slate-50 border-slate-205 text-slate-500 hover:text-slate-800' 
-                    : 'bg-slate-900 border-white/5 text-slate-400 hover:text-white'
-                }`}
-              >
-                <X className="w-4 h-4" />
-              </button>
+              {sidebarOpen && (
+                <button 
+                  onClick={() => setSidebarOpen(false)}
+                  className={`p-1 rounded cursor-pointer lg:hidden border ${
+                    appTheme === 'light' 
+                      ? 'bg-slate-50 border-slate-205 text-slate-500 hover:text-slate-800' 
+                      : 'bg-slate-900 border-white/5 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
             {/* User Account micro widget */}
@@ -600,7 +600,7 @@ export default function App() {
             )}
 
             {/* Menu options list */}
-            <nav className="mt-6 px-3 space-y-1">
+            <nav className={`mt-6 space-y-1 ${sidebarOpen ? 'px-3' : 'px-2'}`}>
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -623,7 +623,8 @@ export default function App() {
                         setSidebarOpen(false);
                       }
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium transition-all ${activeStyle}`}
+                    className={`w-full flex items-center ${sidebarOpen ? 'gap-3 px-4 py-3 justify-start' : 'gap-0 p-3 justify-center'} rounded-xl text-xs font-medium transition-all ${activeStyle}`}
+                    title={item.label}
                   >
                     <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-500' : 'text-slate-500 group-hover:text-amber-500'}`} />
                     {sidebarOpen && <span>{item.label}</span>}
@@ -634,10 +635,11 @@ export default function App() {
           </div>
 
           {/* Quick exit option */}
-          <div className={`px-3 border-t pt-4 ${appTheme === 'light' ? 'border-slate-105' : 'border-white/5'}`}>
+          <div className={`border-t pt-4 ${sidebarOpen ? 'px-3' : 'px-2'} ${appTheme === 'light' ? 'border-slate-105' : 'border-white/5'}`}>
             <button
               onClick={() => setNavigationView('landing')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-medium text-slate-500 hover:text-rose-500 hover:bg-rose-500/5 transition-all border border-transparent"
+              className={`w-full flex items-center ${sidebarOpen ? 'gap-3 px-4 py-3 justify-start' : 'gap-0 p-3 justify-center'} rounded-xl text-xs font-medium text-slate-500 hover:text-rose-500 hover:bg-rose-500/5 transition-all border border-transparent`}
+              title={t.exitHub || 'Exit Hub'}
             >
               <LogOut className="w-4 h-4" />
               {sidebarOpen && <span>{t.exitHub || 'Exit Hub'}</span>}

@@ -307,9 +307,8 @@ export const translations: Record<'en' | 'ar', Dictionary> = {
     streakDays: "أيام متتالية",
     online: "جاهز للعمل",
     spotlightTarget: "الهدف الحالي المسلط عليه الضوء:",
-    logoText: "فوكس رَن",
-
-    landingTitle: "فوكس رَن",
+    logoText: "FOCUS RUN",
+    landingTitle: "FOCUS RUN",
     landingSubtitle: "نظام التشغيل المتكامل للتركيز والإنجاز",
     landingDesc: "ركّز بكل جوارحك في فترات زمنية دقيقة، ابنِ غاباتك الطبيعية، زامن جدول مهامك، وتفاعل بفعالية مع مدرب دراسي بالذكاء الاصطناعي مهيأ لتسريع مسيرتك وجهودك المعرفية.",
     enterWorkspace: "دخول نظام التشغيل",

@@ -117,45 +117,47 @@ export default function LandingPage({
       )}
 
       {/* Navigation Header */}
-      <header id="landing-header" className={`max-w-7xl mx-auto px-6 py-5 flex items-center justify-between border-b ${headerBorders} relative z-10 backdrop-blur-md bg-transparent`}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-tr from-cyan-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-            <Zap className="w-5 h-5 text-white" />
+      <header id="landing-header" className={`max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between border-b ${headerBorders} relative z-10 backdrop-blur-md bg-transparent`}>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-tr from-cyan-500 to-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-md">
+            <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-md font-bold tracking-tight bg-gradient-to-r from-cyan-500 to-indigo-500 bg-clip-text text-transparent">
+            <h1 className="text-sm sm:text-md font-bold tracking-tight bg-gradient-to-r from-cyan-500 to-indigo-500 bg-clip-text text-transparent">
               {t.logoText}
             </h1>
-            <p className="text-[9px] font-mono opacity-60 uppercase tracking-widest">{t.pomoOsTag}</p>
+            <p className="text-[8px] sm:text-[9px] font-mono opacity-60 uppercase tracking-widest hidden xs:block">{t.pomoOsTag}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {/* Theme switcher */}
           <button
             onClick={() => setAppTheme(appTheme === 'light' ? 'dark' : 'light')}
-            className={`p-2 rounded-xl border ${appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-slate-900 border-white/5 text-slate-300'} hover:scale-105 transition-all cursor-pointer`}
+            className={`p-1.5 sm:p-2 rounded-xl border ${appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-slate-900 border-white/5 text-slate-300'} hover:scale-105 transition-all cursor-pointer`}
             title={t.activeMode}
           >
-            {appTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            {appTheme === 'light' ? <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
 
           {/* Lang Switcher */}
           <button
             onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-medium flex items-center gap-1.5 ${appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-slate-900 border-white/5 text-slate-300'} hover:scale-105 transition-all cursor-pointer`}
+            className={`px-2 sm:px-3 py-1.5 rounded-xl border text-xs font-mono font-medium flex items-center gap-1 ${appTheme === 'light' ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-slate-900 border-white/5 text-slate-300'} hover:scale-105 transition-all cursor-pointer`}
           >
             <Languages className="w-3.5 h-3.5" />
-            <span>{lang === 'en' ? 'العربية' : 'English'}</span>
+            <span className="hidden sm:inline">{lang === 'en' ? 'العربية' : 'English'}</span>
+            <span className="sm:hidden uppercase">{lang === 'en' ? 'ar' : 'en'}</span>
           </button>
 
           {/* Launch workspace */}
           <button 
             id="btn-nav-launch"
             onClick={onLaunch}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-indigo-600 text-white hover:opacity-90 shadow-md hover:shadow-cyan-500/10 active:scale-95 transition-all group cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 sm:px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-500 to-indigo-600 text-white hover:opacity-90 shadow-md hover:shadow-cyan-500/10 active:scale-95 transition-all group cursor-pointer"
           >
-            <span>{t.enterWorkspace}</span>
+            <span className="hidden xs:inline">{t.enterWorkspace}</span>
+            <span className="xs:hidden">{lang === 'en' ? 'Launch' : 'دخول'}</span>
             <ChevronRight className={`w-3.5 h-3.5 group-hover:translate-x-1 transition-transform ${isRtl ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
           </button>
         </div>
@@ -275,7 +277,7 @@ export default function LandingPage({
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs">
             <Zap className="w-4 h-4 text-cyan-500" />
-            <span className="font-mono tracking-wider">{lang === 'en' ? 'FOCUS RUN SYSTEM' : 'نظام فوكس رَن المتكامل'}</span>
+            <span className="font-mono tracking-wider">{lang === 'en' ? 'FOCUS RUN SYSTEM' : 'نظام FOCUS RUN المتكامل'}</span>
           </div>
           <p className="text-[10px] font-mono">
             &copy; 2026 Focus Run. {lang === 'en' ? 'All capabilities active.' : 'جميع الخصائص والميزات فعالة.'}

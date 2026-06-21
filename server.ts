@@ -10,29 +10,30 @@ app.use(express.json());
 
 const PORT = Number(process.env.PORT) || 3000;
 
-// Helper to retrieve the API key from common environment variables
-function getApiKey(): string | undefined {
+// Helper to retrieve the API key from request headers or environment variables
+function getApiKey(req?: express.Request): string | undefined {
+  const headerKey = req?.headers ? (req.headers['x-gemini-api-key'] || req.headers['authorization']) : undefined;
+  if (headerKey && typeof headerKey === 'string') {
+    const trimmed = headerKey.replace(/^Bearer\s+/i, '').trim();
+    if (trimmed) return trimmed;
+  }
   return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
 }
 
-// Lazy-initialize Gemini AI Client
-let aiClient: GoogleGenAI | null = null;
-function getAi(): GoogleGenAI {
-  if (!aiClient) {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      console.warn("WARNING: No valid Gemini API Key was found in the environment. AI features will fallback to helpful mockup responses.");
-    }
-    aiClient = new GoogleGenAI({
-      apiKey: apiKey || "MOCK_KEY",
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
+// Instantiate fresh Gemini client for each request to support dynamic client api keys
+function getAi(req?: express.Request): GoogleGenAI {
+  const apiKey = getApiKey(req);
+  if (!apiKey) {
+    console.warn("WARNING: No valid Gemini API Key was found. AI features will fallback to helpful mockup responses.");
   }
-  return aiClient;
+  return new GoogleGenAI({
+    apiKey: apiKey || "MOCK_KEY",
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
 }
 
 // Parse Gemini SDK errors into clear, human-actionable guidance
@@ -40,7 +41,7 @@ function handleGeminiError(error: any): string {
   const msg = error?.message || "";
   console.error("Gemini Failure Logged:", error);
   if (msg.includes("API_KEY_INVALID") || msg.toLowerCase().includes("api key not valid") || msg.toLowerCase().includes("invalid api key")) {
-    return "Your GEMINI_API_KEY appears to be invalid. Please make sure you copied the key correctly from Google AI Studio (https://aistudio.google.com/) and configured it in your deployment settings.";
+    return "Your GEMINI_API_KEY appears to be invalid or deactivated. Please check that you provided the correct key.";
   }
   if (msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("exhausted") || msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("429")) {
     return "Google Gemini API rate limit or quota exceeded. Please check your usage on Google AI Studio or try again in a few seconds.";
@@ -65,13 +66,13 @@ app.post("/api/coach/chat", async (req, res) => {
   try {
     const { message, history, context } = req.body;
     
-    if (!getApiKey()) {
+    if (!getApiKey(req)) {
       return res.json({
         text: `[Fallback Mock Response] Great job maintaining your streak! In this mock mode (missing API Key): you currently have ${context?.totalFocusMinutes || 0} minutes of focus, Level ${context?.level || 1}, and a focus score of 94/100. Let's conquer the next block!`
       });
     }
 
-    const ai = getAi();
+    const ai = getAi(req);
     
     // 1. Filter out the initial welcome seed message from model if it is the first message or has no preceding user message.
     // Ensure that history starts with "user" message and alternates roles strictly user-model-user...
@@ -130,7 +131,7 @@ app.post("/api/coach/plan", async (req, res) => {
   try {
     const { examTopic, daysLeft, targetHoursPerDay } = req.body;
 
-    if (!getApiKey()) {
+    if (!getApiKey(req)) {
       // Mock Fallback
       return res.json({
         tasks: [
@@ -143,7 +144,7 @@ app.post("/api/coach/plan", async (req, res) => {
       });
     }
 
-    const ai = getAi();
+    const ai = getAi(req);
     const prompt = `Develop a structured study plan for a user studying the topic: "${examTopic}" with only ${daysLeft} days remaining. The target hours per day is set to ${targetHoursPerDay || 2} hours.
 Generate a structured JSON list of milestone task study sessions that of sizes matching 25 or 50 minute pomodoro intervals, mapped out by a 'dayOffset' from today (from Day 1 to Day ${daysLeft}).`;
 
@@ -193,7 +194,7 @@ app.post("/api/coach/breakdown", async (req, res) => {
   try {
     const { taskTitle } = req.body;
 
-    if (!getApiKey()) {
+    if (!getApiKey(req)) {
       return res.json({
         subtasks: [
           `Information retrieval for ${taskTitle}`,
@@ -204,7 +205,7 @@ app.post("/api/coach/breakdown", async (req, res) => {
       });
     }
 
-    const ai = getAi();
+    const ai = getAi(req);
     const prompt = `Generate a granular checklist of 4-5 steps to accomplish the complex task: "${taskTitle}". Make them high-impact, actionable, and suitable for checking off in a Pomodoro interval. Return JSON list.`;
 
     const response = await ai.models.generateContent({
@@ -238,14 +239,14 @@ app.post("/api/coach/optimize", async (req, res) => {
   try {
     const { tasks, focusHoursHistory, currentFocusScore } = req.body;
 
-    if (!getApiKey()) {
+    if (!getApiKey(req)) {
       return res.json({
         optimizedSequence: (tasks || []).map((t: any) => t.id),
         insight: "Optimal Schedule: Complete high priority items when your energy levels spike. Balance breaks properly!"
       });
     }
 
-    const ai = getAi();
+    const ai = getAi(req);
     const taskString = (tasks || []).map((t: any) => `ID:${t.id} - Title:${t.title} [Priority: ${t.priority}, Est.Pomos: ${t.estimatedPomodoros}]`).join("\n");
     const prompt = `Analyze the current productivity log and task list to optimize order and maximize flow state:
 Tasks list:

@@ -69,6 +69,8 @@ export default function App() {
   // Settings customizable fields
   const [appTheme, setAppTheme] = useState<'dark-nord' | 'black-minimal'>('dark-nord');
   const [systemSounds, setSystemSounds] = useState(true);
+  const [customGeminiKey, setCustomGeminiKey] = useState<string>(() => localStorage.getItem('pomo_custom_gemini_api_key') || '');
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Load state from local storage on mount
   useEffect(() => {
@@ -724,6 +726,71 @@ export default function App() {
 
                     {/* Data exports and formatting */}
                     <div className="space-y-4">
+                      <h4 className="text-xs font-bold font-mono uppercase text-indigo-400">Google Gemini API Configuration</h4>
+                      
+                      <div className="p-5 bg-slate-950/40 border border-white/5 rounded-2xl space-y-4">
+                        <div className="space-y-1">
+                          <h5 className="text-xs font-bold text-white">Custom Gemini API Key</h5>
+                          <p className="text-[11px] text-slate-400 leading-normal font-light">
+                            If your deployed server is missing the secret environment variable, you can paste your personal key here. It is saved in your browser's local storage and used directly/securely for AI Coaching features.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <input
+                              type={showApiKey ? "text" : "password"}
+                              placeholder="Paste Gemini API Key here (AIzaSy...)"
+                              value={customGeminiKey}
+                              onChange={(e) => {
+                                const val = e.target.value.trim();
+                                setCustomGeminiKey(val);
+                                if (val) {
+                                  localStorage.setItem('pomo_custom_gemini_api_key', val);
+                                } else {
+                                  localStorage.removeItem('pomo_custom_gemini_api_key');
+                                }
+                              }}
+                              className="w-full bg-slate-950/60 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 font-mono pr-12"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowApiKey(!showApiKey)}
+                              className="absolute right-3 top-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 hover:text-white"
+                            >
+                              {showApiKey ? "Hide" : "Show"}
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px]">
+                            <a
+                              href="https://aistudio.google.com/"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+                            >
+                              Get a Free Gemini Key from Google AI Studio ↗
+                            </a>
+                            {customGeminiKey && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomGeminiKey('');
+                                  localStorage.removeItem('pomo_custom_gemini_api_key');
+                                }}
+                                className="text-rose-400 hover:underline"
+                              >
+                                Clear Key
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-white/5 text-[10px] text-slate-500 space-y-1">
+                          <p>💡 <strong className="text-slate-400">Vercel Deployment tip:</strong> To avoid pasting keys, you can define a permanent environment variable on your Vercel Dashboard under <span className="text-slate-300">Project Settings &gt; Environment Variables</span>. Name it <code className="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-400 font-mono">GEMINI_API_KEY</code>, then trigger a re-deployment!</p>
+                        </div>
+                      </div>
+
                       <h4 className="text-xs font-bold font-mono uppercase text-rose-400">Sensitive formatting</h4>
                       
                       <div className="p-5 bg-rose-500/5 border border-rose-500/10 rounded-2xl space-y-3">

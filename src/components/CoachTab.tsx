@@ -80,9 +80,13 @@ export default function CoachTab({
     setChatLoading(true);
 
     try {
+      const customApiKey = localStorage.getItem('pomo_custom_gemini_api_key') || '';
       const response = await fetch("/api/coach/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(customApiKey ? { "X-Gemini-API-Key": customApiKey } : {})
+        },
         body: JSON.stringify({
           message: textToSend,
           history: chatHistory,
@@ -142,9 +146,13 @@ export default function CoachTab({
     setPlanImported(false);
 
     try {
+      const customApiKey = localStorage.getItem('pomo_custom_gemini_api_key') || '';
       const response = await fetch("/api/coach/plan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(customApiKey ? { "X-Gemini-API-Key": customApiKey } : {})
+        },
         body: JSON.stringify({
           examTopic: examTopic.trim(),
           daysLeft: daysRemaining,
@@ -222,9 +230,13 @@ export default function CoachTab({
     const activeTasksPayload = tasks.filter(t => !t.completed);
 
     try {
+      const customApiKey = localStorage.getItem('pomo_custom_gemini_api_key') || '';
       const response = await fetch("/api/coach/optimize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(customApiKey ? { "X-Gemini-API-Key": customApiKey } : {})
+        },
         body: JSON.stringify({
           tasks: activeTasksPayload,
           focusHoursHistory: [60, 100, 25, 50],

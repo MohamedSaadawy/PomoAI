@@ -70,9 +70,13 @@ export default function TaskManager({
 
     setAiLoading(true);
     try {
+      const customApiKey = localStorage.getItem('pomo_custom_gemini_api_key') || '';
       const res = await fetch("/api/coach/breakdown", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(customApiKey ? { "X-Gemini-API-Key": customApiKey } : {})
+        },
         body: JSON.stringify({ taskTitle: title })
       });
       const data = await res.json();

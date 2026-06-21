@@ -11,13 +11,18 @@ app.use(express.json());
 
 const PORT = Number(process.env.PORT) || 3000;
 
+// Helper to retrieve the API key from common environment variables
+function getApiKey(): string | undefined {
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+}
+
 // Lazy-initialize Gemini AI Client
 let aiClient: GoogleGenAI | null = null;
 function getAi(): GoogleGenAI {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = getApiKey();
     if (!apiKey) {
-      console.warn("WARNING: GEMINI_API_KEY is not defined in the environment. AI features will fallback to helpful mockup responses.");
+      console.warn("WARNING: No valid Gemini API Key was found in the environment. AI features will fallback to helpful mockup responses.");
     }
     aiClient = new GoogleGenAI({
       apiKey: apiKey || "MOCK_KEY",
@@ -29,6 +34,22 @@ function getAi(): GoogleGenAI {
     });
   }
   return aiClient;
+}
+
+// Parse Gemini SDK errors into clear, human-actionable guidance
+function handleGeminiError(error: any): string {
+  const msg = error?.message || "";
+  console.error("Gemini Failure Logged:", error);
+  if (msg.includes("API_KEY_INVALID") || msg.toLowerCase().includes("api key not valid") || msg.toLowerCase().includes("invalid api key")) {
+    return "Your GEMINI_API_KEY appears to be invalid. Please make sure you copied the key correctly from Google AI Studio (https://aistudio.google.com/) and configured it in your deployment settings.";
+  }
+  if (msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("exhausted") || msg.toLowerCase().includes("rate limit") || msg.toLowerCase().includes("429")) {
+    return "Google Gemini API rate limit or quota exceeded. Please check your usage on Google AI Studio or try again in a few seconds.";
+  }
+  if (msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("unsupported")) {
+    return "The model specified is not supported or your API key does not have access. Please verify your GEMINI_API_KEY permissions.";
+  }
+  return error.message || "An unexpected error occurred during AI processing.";
 }
 
 // -------------------------------------------------------------
@@ -45,7 +66,7 @@ app.post("/api/coach/chat", async (req, res) => {
   try {
     const { message, history, context } = req.body;
     
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getApiKey()) {
       return res.json({
         text: `[Fallback Mock Response] Great job maintaining your streak! In this mock mode (missing API Key): you currently have ${context?.totalFocusMinutes || 0} minutes of focus, Level ${context?.level || 1}, and a focus score of 94/100. Let's conquer the next block!`
       });
@@ -101,8 +122,7 @@ Keep response sizes around 150-250 words. Do not praise yourself and avoid over-
     const response = await chatInstance.sendMessage({ message: message });
     return res.json({ text: response.text });
   } catch (error: any) {
-    console.error("AI Chat Coach Error:", error);
-    return res.status(500).json({ error: error.message || "Something went wrong during coach processing." });
+    return res.status(500).json({ error: handleGeminiError(error) });
   }
 });
 
@@ -111,7 +131,7 @@ app.post("/api/coach/plan", async (req, res) => {
   try {
     const { examTopic, daysLeft, targetHoursPerDay } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getApiKey()) {
       // Mock Fallback
       return res.json({
         tasks: [
@@ -165,8 +185,7 @@ Generate a structured JSON list of milestone task study sessions that of sizes m
     const output = JSON.parse(response.text || "{}");
     return res.json(output);
   } catch (error: any) {
-    console.error("Planner Generation Error:", error);
-    return res.status(500).json({ error: error.message || "Failed to generate study plan." });
+    return res.status(500).json({ error: handleGeminiError(error) });
   }
 });
 
@@ -175,7 +194,7 @@ app.post("/api/coach/breakdown", async (req, res) => {
   try {
     const { taskTitle } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getApiKey()) {
       return res.json({
         subtasks: [
           `Information retrieval for ${taskTitle}`,
@@ -211,8 +230,7 @@ app.post("/api/coach/breakdown", async (req, res) => {
     const output = JSON.parse(response.text || "{}");
     return res.json(output);
   } catch (error: any) {
-    console.error("Task Breakdown Error:", error);
-    return res.status(500).json({ error: error.message || "Failed to break down task." });
+    return res.status(500).json({ error: handleGeminiError(error) });
   }
 });
 
@@ -221,7 +239,7 @@ app.post("/api/coach/optimize", async (req, res) => {
   try {
     const { tasks, focusHoursHistory, currentFocusScore } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getApiKey()) {
       return res.json({
         optimizedSequence: (tasks || []).map((t: any) => t.id),
         insight: "Optimal Schedule: Complete high priority items when your energy levels spike. Balance breaks properly!"
@@ -262,8 +280,7 @@ Find high leverage adjustments. Sort the list, giving the ID array sequence in r
     const output = JSON.parse(response.text || "{}");
     return res.json(output);
   } catch (error: any) {
-    console.error("Optimizer Error:", error);
-    return res.status(500).json({ error: "Failed to optimize schedule." });
+    return res.status(500).json({ error: handleGeminiError(error) });
   }
 });
 

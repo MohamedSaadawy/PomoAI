@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Lazy-initialize Gemini AI Client
 let aiClient: GoogleGenAI | null = null;
@@ -287,9 +287,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`AI Pomodoro server boot complete! Listening on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`AI Pomodoro server boot complete! Listening on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;

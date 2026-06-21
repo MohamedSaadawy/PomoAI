@@ -1,20 +1,60 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+---
+title: PomoAI
+emoji: ⏱️
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
 
-# Run and deploy your AI Studio app
+# PomoAI ⏱️
 
-This contains everything you need to run your app locally.
+A visually stunning, high-performance Pomodoro Timer application with smart task tracking.
 
-View your app in AI Studio: https://ai.studio/apps/b7f63e0f-59c2-4929-b549-5e7a5767c748
+## Getting Started
 
-## Run Locally
+### Prerequisites
 
-**Prerequisites:**  Node.js
+- Node.js (v20 or higher)
+- npm
 
+### Installation & Run
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+
+2. Run development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Build for production:
+   ```bash
+   npm run build
+   ```
+
+4. Start production server:
+   ```bash
+   npm run start
+   ```
+
+## Deploying to Hugging Face Spaces
+
+This project is configured to run fully in a Docker container on Hugging Face Spaces.
+
+### Step 1: Change Space SDK to Docker
+In your Hugging Face Space, make sure your metadata contains `sdk: docker` and runs on `app_port: 7860` (this is automatically handled if this `README.md` is pushed to your Space!).
+
+### Step 2: Push code to Hugging Face
+You can push directly to Hugging Face from your computer:
+1. Get your **Write Token** from Hugging Face: **Settings** -> **Access Tokens**.
+2. Add your Hugging Face Space as a git remote:
+   ```bash
+   git remote add hf https://huggingface.co/spaces/MohamedSaadawy/PomoAI
+   ```
+3. Push your code:
+   ```bash
+   git push -f hf main
+   ```

@@ -1,5 +1,5 @@
 ---
-title: PomoAI
+title: Focus Run
 emoji: ⏱️
 colorFrom: indigo
 colorTo: blue
@@ -9,7 +9,7 @@ app_port: 7860
 
 # PomoAI — High-Performance Pomodoro Operating System with AI Productivity Coaching
 
-Welcome to **PomoAI**, an advanced, full-stack, personal Pomodoro Operating System designed to transform chaotic daily lists into high-velocity flow states. From the ground up, I architected this application using a modular **React (Vite) + Express + TypeScript** stack, styled with custom **Tailwind CSS**, energized with smooth modern animations using **motion/react**, and augmented by **Google Gemini 3.5-Flash** for context-aware, active behavioral coaching.
+Welcome to **Focus Run**, an advanced, full-stack, personal Pomodoro Operating System designed to transform chaotic daily lists into high-velocity flow states. From the ground up, I architected this application using a modular **React (Vite) + Express + TypeScript** stack, styled with custom **Tailwind CSS**, energized with smooth modern animations using **motion/react**, and augmented by **Google Gemini 3.5-Flash** for context-aware, active behavioral coaching.
 
 This document serves as an exhaustive technical breakdown of PomoAI. I have outlined the full development process, folder hierarchy, API interface layers, gamification metrics (the Virtual Forest and XP loop), and multi-platform deployment setups (Docker, Hugging Face, Vercel, and GitHub Actions) so that anyone can review, run, or audit the system with absolute clarity.
 
